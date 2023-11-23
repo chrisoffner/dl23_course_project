@@ -141,7 +141,10 @@ class DiffSeg:
     M_list = []
     for i in range(len(weight_64)):
       # Step 1: Attention Aggregation
-      weights = self.aggregate_weights([weight_64[i],weight_32[i], weight_16[i], weight_8[i]],weight_ratio=weight_ratio)
+      weights = self.aggregate_weights(
+        [weight_64[i],weight_32[i], weight_16[i], weight_8[i]],
+        weight_ratio=weight_ratio
+      )
       # Step 2 & 3: Iterative Merging & NMS
       M_final = self.generate_masks(weights, self.kl_threshold, self.grid)
       M_list.append(M_final)

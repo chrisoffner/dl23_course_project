@@ -7,8 +7,7 @@ import numpy as np
 def process_image(image_path):
     with open(image_path, "rb") as f:
       image = np.array(PIL.Image.open(f))
-      s = tf.shape(image)
-      w, h = s[0], s[1]
+      w, h, _ = tf.shape(image)
       c = tf.minimum(w, h)
       w_start = (w - c) // 2
       h_start = (h - c) // 2

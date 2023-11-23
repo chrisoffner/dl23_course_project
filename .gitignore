@@ -1,1 +1,2 @@
-diffseg/__pycache__
+diffseg/__pycache__/
+*.pyc
