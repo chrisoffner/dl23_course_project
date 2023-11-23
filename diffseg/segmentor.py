@@ -1,8 +1,6 @@
 import tensorflow as tf
-import copy
 from sklearn.cluster import KMeans
 import numpy as np
-from collections import defaultdict
 
 class DiffSeg:
   def __init__(self, kl_threshold, refine, num_points):
@@ -73,9 +71,9 @@ class DiffSeg:
     return aggre_weights.numpy().astype(np.double)
 
   def KL(self,x,Y):
-      qoutient = tf.math.log(x)-tf.math.log(Y)
-      kl_1 = tf.math.reduce_sum(tf.math.multiply(x, qoutient),axis=(-2,-1))/2
-      kl_2 = -tf.math.reduce_sum(tf.math.multiply(Y, qoutient),axis=(-2,-1))/2
+      quotient = tf.math.log(x)-tf.math.log(Y)
+      kl_1 = tf.math.reduce_sum(tf.math.multiply(x, quotient),axis=(-2,-1))/2
+      kl_2 = -tf.math.reduce_sum(tf.math.multiply(Y, quotient),axis=(-2,-1))/2
       return tf.math.add(kl_1,kl_2)
 
   def mask_merge(self, iter, attns, kl_threshold, grid=None):
@@ -149,25 +147,3 @@ class DiffSeg:
       M_final = self.generate_masks(weights, self.kl_threshold, self.grid)
       M_list.append(M_final)
     return np.array(M_list)
-
-  def get_semantics(self, pred, x_weight, nouns, voting="majority"):
-        # This function assigns semantic labels to masks 
-        indices = [item[0]+1 for item in nouns] # Igonore the first BOS token
-        prompt_list = [item[1] for item in nouns]
-        x_weight = x_weight[:,:,indices] # size x size x N
-        x_weight = x_weight.reshape(512*512,-1)
-        norm = np.linalg.norm(x_weight,axis=0,keepdims=True)
-        x_weight = x_weight/norm # Normalize the cross-attention maps spatially
-        pred = pred.reshape(512*512,-1)
-
-        label_to_mask = defaultdict(list)
-        for i in set(pred.flatten()):
-          if voting == "majority":
-            logits = x_weight[(pred==i).flatten(),:]
-            index = logits.argmax(axis=-1)
-            category = prompt_list[int(np.median(index))]
-          else:
-            logit = x_weight[(pred==i).flatten(),:].mean(0)
-            category = prompt_list[logit.argmax(axis=-1)]
-          label_to_mask[category].append(i)
-        return label_to_mask
