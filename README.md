@@ -1,2 +1,3 @@
-# diffusion_features
-Deep Learning project exploring emergent correspondence features in image diffusion models
+# Diffusion Segmentation Project for ETH Deep Learning A23
+
+This repository currently builds directly on the **[DiffSeg](https://github.com/PotatoTian/DiffSeg)** paper.
