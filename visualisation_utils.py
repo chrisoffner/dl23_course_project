@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.ndimage import zoom
+from tqdm import tqdm
 
 def convert_channel_idx(orig_channel: int, orig_res: int, new_res: int) -> int:
     """
@@ -100,8 +101,7 @@ def plot_attention(
     axs[1, 1].imshow(zoom(B[:, :, channel], scale, order=2))
 
     # Calculate pixel position corresponding to the channel number
-    row = channel // res
-    col = channel % res
+    row, col = divmod(channel, res)
 
     # Update the scatter plot to highlight the pixel in red
     axs[0, 0].scatter([], [], color='red', s=30).set_offsets([col, row])
@@ -148,6 +148,12 @@ def animate_attention(
     assert res in res2weights.keys()
     assert fps <= 60
 
+    # Create a generator function for frames with tqdm progress bar
+    def frame_generator(num_frames):
+        for frame in tqdm(np.linspace(0, res**2, num=num_frames, endpoint=False).round().astype(int),
+                          desc="Rendering frames", total=num_frames):
+            yield frame
+
     A, B = _attention_interpretations(res2weights, res)
 
     # Create a figure and axes
@@ -169,9 +175,10 @@ def animate_attention(
     ani = animation.FuncAnimation(
         fig,
         _update_plot,
-        frames=np.linspace(0, res**2, num=num_frames, endpoint=False).round().astype(int),
+        frames=frame_generator(num_frames),
         fargs=(A, B, axs, scatters, res),
-        blit=False
+        blit=False,
+        save_count=num_frames
     )
 
     # Save the animation to disk
