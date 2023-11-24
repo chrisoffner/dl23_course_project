@@ -23,7 +23,6 @@ from keras_cv.src.models.stable_diffusion.decoder import Decoder
 from .diffusion_model import DiffusionModel
 from keras_cv.src.models.stable_diffusion.image_encoder import ImageEncoder
 from keras_cv.src.models.stable_diffusion.text_encoder import TextEncoder
-from keras_cv.src.models.stable_diffusion.text_encoder import TextEncoderV2
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras

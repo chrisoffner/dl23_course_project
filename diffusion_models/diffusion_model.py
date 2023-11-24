@@ -1,9 +1,7 @@
 # The following code is modifed from 
 # https://github.com/keras-team/keras-cv/blob/master/keras_cv/models/stable_diffusion/diffusion_model.py
 
-from keras_cv.src.models.stable_diffusion.padded_conv2d import (
-    PaddedConv2D,
-)
+from keras_cv.src.models.stable_diffusion.padded_conv2d import PaddedConv2D
 import tensorflow as tf
 from tensorflow import keras
 

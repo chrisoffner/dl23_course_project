@@ -23,7 +23,7 @@ augmenter = keras.Sequential(
 )
 
 def find_edges(M):
-  edges = np.zeros((512,512))
+  edges = np.zeros((512, 512))
   m1 = M[1:510,1:510] != M[0:509,1:510]
   m2 = M[1:510,1:510] != M[2:511,1:510]
   m3 = M[1:510,1:510] != M[1:510,0:509]
@@ -36,7 +36,7 @@ def find_edges(M):
   y_new = y_new[edges==1]
   return x_new,y_new
 
-def vis_without_label(M,image,index=None,save=False,dir=None,num_class=26):
+def vis_without_label(M, image, index=None, save=False, dir=None, num_class=26):
   fig = plt.figure(figsize=(20, 20))
   ax = plt.subplot(1, 3, 1)
   ax.imshow(image)
@@ -52,25 +52,11 @@ def vis_without_label(M,image,index=None,save=False,dir=None,num_class=26):
   plt.axis("off")
 
   ax = plt.subplot(1, 3, 3)
-  ax.imshow(M, cmap='jet',alpha=0.5, vmin=-1, vmax=num_class),
+  ax.imshow(M, cmap='jet', alpha=0.5, vmin=-1, vmax=num_class),
   ax.set_title("Segmentation",fontdict={"fontsize":30})
   plt.axis("off")
 
   if save:
     fig.savefig(open(dir+"/example_{}.png".format(index), 'wb'), format='png',bbox_inches='tight', dpi=200)
     plt.close(fig)
-
-
-def semantic_mask(image, pred, label_to_mask):
-  num_fig = len(label_to_mask)
-  plt.figure(figsize=(20, 20))
-  for i,label in enumerate(label_to_mask.keys()):
-      ax = plt.subplot(1, num_fig, i+1)
-      image = image.reshape(512*512,-1)
-      bin_mask = np.zeros_like(image)
-      for mask in label_to_mask[label]:
-        bin_mask[(pred.reshape(512*512)==mask).flatten(),:] = 1
-      ax.imshow((image*bin_mask).reshape(512,512,-1))
-      ax.set_title(label,fontdict={"fontsize":30})
-      ax.axis("off")
 
