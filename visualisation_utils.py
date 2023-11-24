@@ -68,6 +68,58 @@ def channel_to_rgb(channel: np.ndarray, colormap=plt.cm.viridis) -> np.ndarray:
 
     return rgb
 
+def plot_attention_location(
+        res2weights: Dict[int, np.ndarray],
+        orig_channel_idx: int = 2355,
+        orig_res: int = 64,
+        interpolate: bool = False
+    ) -> None:
+    """
+    Plots a 2 x 8 grid of attention map subplots where each column shows the
+    A, B variants for one attention map resolution for a given image location.
+    The location is determined by a channel index that is specified relative to
+    an original resolution.
+
+    For example, orig_channel_idx==2355 and orig_res==64 plots all attention
+    maps that correspond to channel 2355 in the 64 x 64 attention map. For maps
+    with lower resolution, the channel index will be converted accordingly.
+
+    Parameters
+    ----------
+    res2weights      : Dictionary containing { resolution: attention_map } pairs
+    orig_channel_idx : Channel index specifying a location in the orig_res map 
+    orig_res         : Resolution of the attention map in which orig_channel_idx
+                    has been chosen
+    interpolate      : Boolean deciding whether to render with bicubic upscaling
+
+    Returns
+    -------
+    None
+    """
+
+    resolutions = [8, 16, 32, 64]
+
+    fig, axs = plt.subplots(2, 4, figsize=(20, 10))
+
+    for i, res in enumerate(resolutions):
+        A, B        = _attention_interpretations(res2weights, res)
+        ch          = convert_channel_idx(orig_channel_idx, orig_res, res)
+        row, col    = divmod(ch, res)
+        zoom_factor = resolutions[-i-1] if interpolate else 1
+        offset      = zoom_factor / 2 if interpolate else 0
+
+        axs[0, i].imshow(zoom(A[ch, :, :], zoom_factor, order=2) if interpolate else A[ch, :, :])
+        axs[1, i].imshow(zoom(B[:, :, ch], zoom_factor, order=2) if interpolate else B[:, :, ch])
+        axs[0, i].scatter([], [], color='red', s=30).set_offsets([col * zoom_factor + offset, row * zoom_factor + offset])
+        axs[1, i].scatter([], [], color='red', s=30).set_offsets([col * zoom_factor + offset, row * zoom_factor + offset])
+        axs[0, i].set_title(f'A[{ch}, :, :] ({res} x {res})')
+        axs[1, i].set_title(f'B[:, :, {ch}] ({res} x {res})')
+
+    fig.tight_layout()
+    fig.suptitle(f"Self-attention maps corresponding to channel {orig_channel_idx} in {orig_res} x {orig_res} map", y=1.05)
+    
+    plt.show()
+
 
 def plot_attention(
         res2weights: Dict[int, np.ndarray],
