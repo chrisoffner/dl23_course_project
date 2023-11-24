@@ -56,8 +56,6 @@ class StableDiffusionBase:
 
   def text_to_image(
       self,
-      prompt,
-      negative_prompt=None,
       batch_size=1,
       num_steps=50,
       unconditional_guidance_scale=7.5,
@@ -65,14 +63,9 @@ class StableDiffusionBase:
       latent=None,
       timestep=None,
   ):
-    if prompt is not None:
-      encoded_text = self.encode_text(prompt)
-    else:
-      encoded_text = None
-
     return self.generate_image(
-        encoded_text,
-        negative_prompt=negative_prompt,
+        encoded_text=None,
+        negative_prompt=None,
         batch_size=batch_size,
         num_steps=num_steps,
         unconditional_guidance_scale=unconditional_guidance_scale,
