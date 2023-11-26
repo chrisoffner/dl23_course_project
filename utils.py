@@ -36,24 +36,40 @@ def find_edges(M):
   y_new = y_new[edges==1]
   return x_new,y_new
 
+<<<<<<< Updated upstream
 def vis_without_label(M,image,index=None,save=False,dir=None,num_class=26):
+=======
+def vis_without_label(M, image, index=None, save=False, dir=None, num_class=26, num_anchor_points=None):
+>>>>>>> Stashed changes
   fig = plt.figure(figsize=(20, 20))
   ax = plt.subplot(1, 3, 1)
   ax.imshow(image)
-  ax.set_title("Input",fontdict={"fontsize":30})
+  ax.set_title("Input",fontdict={"fontsize":10})
   plt.axis("off")
 
   x,y = find_edges(M)
   ax = plt.subplot(1, 3, 2)
+  if num_anchor_points:
+      w,h,_ = image.shape
+      dw = w/num_anchor_points
+      dh = h/num_anchor_points
+      for i in range(num_anchor_points):
+        for j in range(num_anchor_points):
+          ax.plot(dw*0.5 + dw*i, dh*0.5 +dh*j, marker='o', color="red", markersize = 2) 
   ax.imshow(image)
   ax.imshow(M,cmap='jet',alpha=0.5, vmin=-1, vmax=num_class)
   ax.scatter(x,y,color="blue", s=0.5)
-  ax.set_title("Overlay",fontdict={"fontsize":30})
+  ax.set_title("Overlay",fontdict={"fontsize":10})
   plt.axis("off")
 
   ax = plt.subplot(1, 3, 3)
+<<<<<<< Updated upstream
   ax.imshow(M, cmap='jet',alpha=0.5, vmin=-1, vmax=num_class),
   ax.set_title("Segmentation",fontdict={"fontsize":30})
+=======
+  ax.imshow(M, cmap='jet', alpha=0.5, vmin=-1, vmax=num_class),
+  ax.set_title(f"Segmentation ({len(set(M.flatten()))})",fontdict={"fontsize":10})
+>>>>>>> Stashed changes
   plt.axis("off")
 
   if save:
