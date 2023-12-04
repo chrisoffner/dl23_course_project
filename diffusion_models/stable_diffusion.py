@@ -167,7 +167,10 @@ class StableDiffusionBase:
           "`generate_image`. `seed` is only used to generate diffusion "
           "noise when it's not already user-specified."
       )
-
+    
+    # Chris: I added this so we could output and look at the output latents of
+    #        the denoising process.
+    output_image = None
 
     if negative_prompt is None:
       unconditional_context = tf.repeat(
@@ -180,18 +183,25 @@ class StableDiffusionBase:
       )
     # ====================== Extract attention maps ======================
     if latent is not None and timestep is not None:
+      # Chris: Ignore this, we don't get here.
       t_emb = self._get_timestep_embedding(timestep, batch_size)
       if encoded_text is not None:
+        # Chris: Ignore this, we don't get here.
         context = self._expand_tensor(encoded_text, batch_size)
         conditional_latent, weight_64, weight_32, weight_16, weight_8, x_weights_64, x_weights_32, x_weights_16, x_weights_8 = self.diffusion_model.predict_on_batch(
             [latent, t_emb, context]
         )
       else:
+        # Chris: This is what we execute.
         unconditional_latent, weight_64, weight_32, weight_16, weight_8, x_weights_64, x_weights_32, x_weights_16, x_weights_8 = self.diffusion_model.predict_on_batch(
             [latent, t_emb, unconditional_context]
         )
+        # Chris: Assign unconditional_latent as output_image so we can access it
+        #        outside the scope of this `else`-block.
+        output_image = unconditional_latent
     # ====================== Extract attention maps ======================
     else:
+      # Chris: Ignore this, we don't get here
       context = self._expand_tensor(encoded_text, batch_size)
       if diffusion_noise is not None:
         diffusion_noise = tf.squeeze(diffusion_noise)
@@ -230,9 +240,16 @@ class StableDiffusionBase:
         progbar.update(iteration)
 
     # Decoding stage
-    decoded = self.decoder.predict_on_batch(latent)
-    decoded = ((decoded + 1) / 2) * 255
-    return np.clip(decoded, 0, 255).astype("uint8"), weight_64, weight_32, weight_16, weight_8, x_weights_64, x_weights_32, x_weights_16, x_weights_8
+    input_image = self.decoder.predict_on_batch(latent)
+    input_image = ((input_image + 1) / 2) * 255
+    input_image = np.clip(input_image, 0, 255).astype("uint8")
+
+    output_image = self.decoder.predict_on_batch(output_image)
+    output_image = ((output_image + 1) / 2) * 255
+    output_image = np.clip(output_image, 0, 255).astype("uint8")
+
+    return input_image, output_image, weight_64, weight_32, weight_16, weight_8, \
+           x_weights_64, x_weights_32, x_weights_16, x_weights_8
 
   def _get_unconditional_context(self):
     unconditional_tokens = tf.convert_to_tensor(
