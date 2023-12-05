@@ -45,45 +45,8 @@ class StableDiffusionBase:
     self._text_encoder = None
     self._diffusion_model = None
     self._decoder = None
-    # self._tokenizer = None
 
     self.jit_compile = jit_compile
-
-
-#   def encode_text(self, prompt):
-#     """Encodes a prompt into a latent text encoding.
-
-#     The encoding produced by this method should be used as the
-#     `encoded_text` parameter of `StableDiffusion.generate_image`. Encoding
-#     text separately from generating an image can be used to arbitrarily
-#     modify the text encoding prior to image generation, e.g. for walking
-#     between two prompts.
-
-#     Args:
-#         prompt: a string to encode, must be 77 tokens or shorter.
-
-#     Example:
-
-#     ```python
-#     from keras_cv.models import StableDiffusion
-
-#     model = StableDiffusion(img_height=512, img_width=512, jit_compile=True)
-#     encoded_text  = model.encode_text("Tacos at dawn")
-#     img = model.generate_image(encoded_text)
-#     ```
-#     """
-#     # Tokenize prompt (i.e. starting context)
-#     inputs = self.tokenizer.encode(prompt)
-#     if len(inputs) > MAX_PROMPT_LENGTH:
-#       raise ValueError(
-#           f"Prompt is too long (should be <= {MAX_PROMPT_LENGTH} tokens)"
-#       )
-#     phrase = inputs + [49407] * (MAX_PROMPT_LENGTH - len(inputs))
-#     phrase = tf.convert_to_tensor([phrase], dtype=tf.int32)
-
-#     context = self.text_encoder.predict_on_batch([phrase, self._get_pos_ids()])
-
-#     return context
 
   def generate_image(
       self,
@@ -119,7 +82,8 @@ class StableDiffusionBase:
 
   def _get_unconditional_context(self):
     unconditional_tokens = tf.convert_to_tensor(
-        [_UNCONDITIONAL_TOKENS], dtype=tf.int32
+        [_UNCONDITIONAL_TOKENS],
+        dtype=tf.int32
     )
     unconditional_context = self.text_encoder.predict_on_batch(
         [unconditional_tokens, self._get_pos_ids()]
@@ -145,7 +109,11 @@ class StableDiffusionBase:
     return self._decoder
 
   def _get_timestep_embedding(
-      self, timestep, batch_size, dim=320, max_period=10000
+      self,
+      timestep,
+      batch_size,
+      dim=320,
+      max_period=10000
   ):
     half = dim // 2
     freqs = tf.math.exp(
