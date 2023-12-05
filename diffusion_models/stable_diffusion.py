@@ -101,10 +101,8 @@ class StableDiffusionBase:
 
     # ====================== Extract attention maps ======================
 
-    unconditional_latent, weight_64, weight_32, weight_16, weight_8, _, _, _, _ \
-        = self.diffusion_model.predict_on_batch(
-        [latent, t_emb, unconditional_context]
-    )
+    unconditional_latent, weight_64, weight_32, weight_16, weight_8 \
+        = self.diffusion_model.predict_on_batch([latent, t_emb, unconditional_context])
     
     # ====================================================================
 
@@ -244,7 +242,9 @@ class StableDiffusion(StableDiffusionBase):
     """
     if self._diffusion_model is None:
       self._diffusion_model = DiffusionModel(
-          self.img_height, self.img_width, MAX_PROMPT_LENGTH
+          self.img_height,
+          self.img_width,
+          MAX_PROMPT_LENGTH
       )
       if self.jit_compile:
         self._diffusion_model.compile(jit_compile=True)
