@@ -77,8 +77,8 @@ def plot_attention_location(
         orig_res: int = 64,
         interpolate: bool = False,
         timestep: int = 300,
-        fig: Figure = None, # Used when rendering animations
-        axs: np.ndarray = None                # Used when rendering animations
+        fig: Figure = None,     # Used when rendering animations
+        axs: np.ndarray = None  # Used when rendering animations
     ) -> List[Artist]:
     """
     Plots a 2 x 8 grid of attention map subplots where each column shows the
