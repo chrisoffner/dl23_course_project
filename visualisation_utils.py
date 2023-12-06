@@ -221,3 +221,9 @@ def _attention_interpretations(
     assert B.shape == (res, res, res**2)
 
     return A, B
+
+def show_image(image_path):
+  with open(image_path, "rb") as f:
+    image = np.array(PIL.Image.open(f))
+    plt.imshow(image)
+    plt.show()
