@@ -11,7 +11,9 @@
 
 
 from typing import Dict, List, Tuple
+from math import ceil, sqrt
 
+import torch
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.artist import Artist
@@ -221,3 +223,21 @@ def _attention_interpretations(
     assert B.shape == (res, res, res**2)
 
     return A, B
+
+
+def plot_masks_grid(masks_tensor: torch.Tensor):
+    grid_size = ceil(sqrt(masks_tensor.size(0)))
+
+    _, axes = plt.subplots(grid_size, grid_size, figsize=(15, 15))
+    axes = axes.flatten()
+
+    for idx, ax in enumerate(axes):
+        if idx < masks_tensor.shape[0]:
+            ax.imshow(masks_tensor[idx], cmap='gray')
+            ax.axis('off')
+            ax.set_title(f'Index: {idx}')
+        else:
+            ax.axis('off')  # Hide axes for empty plots
+
+    plt.tight_layout()
+    plt.show()
