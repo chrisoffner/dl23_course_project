@@ -144,7 +144,8 @@ def animate_locations(
         res2weights: Dict[int, np.ndarray],
         num_frames: int = 4096,
         fps: int = 1,
-        interpolate: bool = False
+        interpolate: bool = False,
+        filename: str = "attention_animation"
     ) -> None:
     fig, axs = plt.subplots(2, 4, figsize=(20, 10))  # Create the figure and axes
     fig.tight_layout()
@@ -182,7 +183,7 @@ def animate_locations(
     # Show a progress bar while rendering the animation, then save file to disk
     with tqdm(total=num_frames, desc="Saving animation") as pbar:
         ani.save(
-            f'./animations/attention_animation.mp4',
+            f'./animations/{filename}.mp4',
             writer='ffmpeg',
             fps=fps,
             progress_callback=lambda i, n: pbar.update()
@@ -203,13 +204,12 @@ def _attention_interpretations(
     """
 
     assert res in res2weights.keys()
-    assert res2weights[res].shape[1] == 8      # Number of attention heads
-    assert res2weights[res].shape[2] == res**2
-    assert res2weights[res].shape[3] == res**2
+    assert res2weights[res].shape[0] == res**2
+    assert res2weights[res].shape[0] == res**2
 
     # Reshape 64 x 64 self-attention maps and sum them across heads for visualisation
-    A = res2weights[res].reshape(1, 8, res*res, res, res).squeeze(0).sum(axis=0)
-    B = res2weights[res].reshape(1, 8, res, res, res*res).squeeze(0).sum(axis=0)
+    A = res2weights[res].reshape(res*res, res, res)
+    B = res2weights[res].reshape(res, res, res*res)
 
     # Normalise values for visualisation
     A -= A.min()
@@ -221,3 +221,83 @@ def _attention_interpretations(
     assert B.shape == (res, res, res**2)
 
     return A, B
+
+
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+
+def render_attention_animation(
+        timestep_range,
+        orig_channel_idx=2355,
+        orig_res=64,
+        interpolate=False,
+        filename='attention_animation',
+        fps: int = 5
+    ):
+    """
+    Renders an animation of attention maps over a range of timesteps.
+
+    Parameters
+    ----------
+    res2weights      : Dictionary containing { resolution: attention_map } pairs
+    timestep_range   : Tuple or list defining the start and end of the timestep range
+    orig_channel_idx : Channel index specifying a location in the orig_res map
+    orig_res         : Resolution of the attention map in which orig_channel_idx
+                       has been chosen
+    interpolate      : Boolean deciding whether to render with bicubic upscaling
+    save_path        : Path to save the animation
+
+    Returns
+    -------
+    None
+    """
+    fig, axs = plt.subplots(2, 4, figsize=(20, 10))
+    title = plt.suptitle(t='', fontsize = 20)
+
+    def update_frame(timestep):
+        # Clear both subplots
+        axs[0, 0].cla()  
+        axs[1, 0].cla()
+
+        # Set title
+        title.set_text(f"Self-attention maps for timestep {timestep}")
+
+        image_path = "./images/img1.jpeg"  # Specify the path to your image
+
+        # Run inference to obtain self-attention maps for current time step
+        with tf.device(device):
+            images = process_image(image_path)
+            images = augmenter(images)
+            latent = vae(tf.expand_dims(images, axis=0), training=False)
+            _, _, weight_64, weight_32, weight_16, weight_8, _, _, _, _ = model.text_to_image(
+                batch_size=1,
+                latent=latent,
+                timestep=timestep
+            )
+
+        # Store self-attention maps in a dictionary for resolution-specific access
+        res2weights = { 8: weight_8, 16: weight_16, 32: weight_32, 64: weight_64 }
+
+        artists = plot_attention_location(
+            res2weights,
+            orig_channel_idx=orig_channel_idx,
+            orig_res=orig_res,
+            interpolate=interpolate,
+            timestep=timestep,
+            fig=fig,
+            axs=axs
+        )
+        return artists
+
+    ani = FuncAnimation(fig, update_frame, frames=timestep_range, blit=True)
+
+    # Show a progress bar while rendering the animation, then save file to disk
+    with tqdm(total=len(timestep_range), desc="Saving animation") as pbar:
+        ani.save(
+            f"animations/{filename}.mp4",
+            writer="ffmpeg",
+            fps=fps,
+            progress_callback=lambda i, n: pbar.update()
+        )
