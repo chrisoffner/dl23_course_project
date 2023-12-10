@@ -53,19 +53,26 @@ class StableDiffusionBase:
       batch_size=1,
       latent=None,
       timestep=None,
+      context=None 
   ):
-    unconditional_context = tf.repeat(
-          self._get_unconditional_context(),
-          batch_size,
-          axis=0
-    )
+    if context is None:
+        # Use "unconditional" context
+        context = tf.repeat(
+            self._get_unconditional_context(),
+            batch_size,
+            axis=0
+        )
+        print("unconditional context min: ", tf.math.reduce_min(context).numpy())
+        print("unconditional context max: ", tf.math.reduce_max(context).numpy())
+    else:
+        assert context.shape == (1, 77, 768)
 
     t_emb = self._get_timestep_embedding(timestep, batch_size)
 
     # ====================== Extract attention maps ======================
 
     unconditional_latent, weight_64, weight_32, weight_16, weight_8 \
-        = self.diffusion_model.predict_on_batch([latent, t_emb, unconditional_context])
+        = self.diffusion_model.predict_on_batch([latent, t_emb, context])
     
     # ====================================================================
 
@@ -74,11 +81,11 @@ class StableDiffusionBase:
     # input_image = ((input_image + 1) / 2) * 255
     # input_image = np.clip(input_image, 0, 255).astype("uint8")
 
-    # output_image = self.decoder.predict_on_batch(unconditional_latent)
-    # output_image = ((output_image + 1) / 2) * 255
-    # output_image = np.clip(output_image, 0, 255).astype("uint8")
+    output_image = self.decoder.predict_on_batch(unconditional_latent)
+    output_image = ((output_image + 1) / 2) * 255
+    output_image = np.clip(output_image, 0, 255).astype("uint8")
 
-    return weight_64, weight_32, weight_16, weight_8
+    return output_image, weight_64, weight_32, weight_16, weight_8
 
   def _get_unconditional_context(self):
     unconditional_tokens = tf.convert_to_tensor(
