@@ -4,16 +4,24 @@ import tensorflow as tf
 import PIL
 import numpy as np
 
-def process_image(image_path):
-    with open(image_path, "rb") as f:
-      image = np.array(PIL.Image.open(f))
-      w, h, _ = tf.shape(image)
-      c = tf.minimum(w, h)
-      w_start = (w - c) // 2
-      h_start = (h - c) // 2
-      image = image[w_start : w_start + c, h_start : h_start + c, :]
-      image = tf.image.resize(image, (512, 512))
-      return image
+def show_image(image_path):
+  image = get_image(image_path)
+  plt.imshow(image)
+
+def get_image(image_path):
+  with open(image_path, "rb") as f:
+    image= np.array(PIL.Image.open(f))
+    return image
+
+def crop_and_scale_image(image, target_size=(512, 512)):
+  w, h, _ = tf.shape(image)
+  c = tf.minimum(w, h)
+  w_start = (w - c) // 2
+  h_start = (h - c) // 2
+  image = image[w_start : w_start + c, h_start : h_start + c, :] #center crop
+  image = tf.image.resize(image, target_size) # resize - this changes the type to float32  
+  image = tf.cast(image, tf.int16)  #change type back to int16
+  return image
 
 augmenter = keras.Sequential(
     layers=[
@@ -21,6 +29,9 @@ augmenter = keras.Sequential(
         tf.keras.layers.Rescaling(scale=1.0 / 127.5, offset=-1),
     ]
 )
+
+normalize_m1to1 =  tf.keras.layers.Rescaling(scale=1.0 / 127.5, offset=-1)
+normalize_0to1 =  tf.keras.layers.Rescaling(scale=1.0 / 255.0, offset=0)  
 
 def find_edges(M):
   edges = np.zeros((512, 512))
