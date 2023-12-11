@@ -70,10 +70,6 @@ class StableDiffusionBase:
     # ====================================================================
 
     # Decoding
-    # input_image = self.decoder.predict_on_batch(latent)
-    # input_image = ((input_image + 1) / 2) * 255
-    # input_image = np.clip(input_image, 0, 255).astype("uint8")
-
     # output_image = self.decoder.predict_on_batch(unconditional_latent)
     # output_image = ((output_image + 1) / 2) * 255
     # output_image = np.clip(output_image, 0, 255).astype("uint8")
