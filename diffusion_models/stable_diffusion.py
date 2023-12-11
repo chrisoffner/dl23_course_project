@@ -240,16 +240,12 @@ class StableDiffusionBase:
         progbar.update(iteration)
 
     # Decoding stage
-    input_image = self.decoder.predict_on_batch(latent)
-    input_image = ((input_image + 1) / 2) * 255
-    input_image = np.clip(input_image, 0, 255).astype("uint8")
-
     output_image = self.decoder.predict_on_batch(output_image)
     output_image = ((output_image + 1) / 2) * 255
     output_image = np.clip(output_image, 0, 255).astype("uint8")
 
-    return input_image, output_image, weight_64, weight_32, weight_16, weight_8, \
-           x_weights_64, x_weights_32, x_weights_16, x_weights_8
+    return output_image, weight_64,    weight_32,    weight_16,    weight_8, \
+                       x_weights_64, x_weights_32, x_weights_16, x_weights_8
 
   def _get_unconditional_context(self):
     unconditional_tokens = tf.convert_to_tensor(
