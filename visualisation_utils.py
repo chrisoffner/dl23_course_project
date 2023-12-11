@@ -195,21 +195,20 @@ def _attention_interpretations(
     ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Helper function that reshapes attention maps in two different ways to allow
-    visual comparison. Sums attention maps across all 8 heads.
+    visual comparison.
     Example for 64 x 64 self-attention maps:
 
-    A: (1, 8, 4096, 4096) -> (1, 8, 4096, 64,   64) -> (4096, 64,   64)
-    B: (1, 8, 4096, 4096) -> (1, 8,   64  64, 4096) -> (64,   64, 4096)
+    A: (4096, 4096) -> (4096, 64,   64)
+    B: (4096, 4096) ->   (64, 64, 4096)
     """
 
     assert res in res2weights.keys()
-    assert res2weights[res].shape[1] == 8      # Number of attention heads
-    assert res2weights[res].shape[2] == res**2
-    assert res2weights[res].shape[3] == res**2
+    assert res2weights[res].shape[0] == res**2
+    assert res2weights[res].shape[1] == res**2
 
-    # Reshape 64 x 64 self-attention maps and sum them across heads for visualisation
-    A = res2weights[res].reshape(1, 8, res*res, res, res).squeeze(0).sum(axis=0)
-    B = res2weights[res].reshape(1, 8, res, res, res*res).squeeze(0).sum(axis=0)
+    # Reshape 64 x 64 self-attention maps for visualisation
+    A = res2weights[res].reshape(res*res, res, res)
+    B = res2weights[res].reshape(res, res, res*res)
 
     # Normalise values for visualisation
     A -= A.min()
