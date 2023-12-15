@@ -1,6 +1,6 @@
-from typing import Dict
 import os
 from tqdm import tqdm
+from typing import Dict
 
 import torch
 import tensorflow as tf
@@ -27,7 +27,7 @@ assert os.path.exists(FEATURE_DIR), f"Target directory {FEATURE_DIR} does not ex
 
 
 def main():
-    print(f"GPUs available: ", tf.config.experimental.list_physical_devices('GPU'))
+    print(f"GPUs available: ", tf.config.experimental.list_physical_devices("GPU"))
     device = tf.test.gpu_device_name()
     print(tf.test.gpu_device_name())
 
@@ -58,8 +58,8 @@ def main():
             continue
 
         # Dictionary of structure { timestep : { resolution : self-attention map } }
-        self_attn_dict: Dict[int, Dict[int, torch.Tensor]] = { }
-        cross_attn_dict: Dict[int, Dict[int, torch.Tensor]] = { }
+        self_attn_dict: Dict[int, Dict[int, torch.Tensor]] = {}
+        cross_attn_dict: Dict[int, Dict[int, torch.Tensor]] = {}
 
         # Load image, preprocess it, and run it through the VAE encoder
         with tf.device(device):
@@ -95,6 +95,8 @@ def main():
         # Save dictionaries to disk
         dict_to_disk(attn_dict=self_attn_dict,  file_path=self_attn_path)
         dict_to_disk(attn_dict=cross_attn_dict, file_path=cross_attn_path)
+
+    print("\n=== Feature extraction complete ===")
 
 
 if __name__ == "__main__":
