@@ -10,27 +10,31 @@ from pycocotools import mask as coco_mask
 
 
 def dict_to_disk(
-        self_attn_dict: Dict[int, Dict[int, np.ndarray]],
-        filename: str
+        attn_dict: Dict[int, Dict[int, torch.Tensor]],
+        file_path: str
     ):
+    assert file_path.endswith('.h5'), "File path must end with .h5"
+
     # Write to file
-    with h5py.File(f'{filename}.h5', 'w') as file:
-        for t_step, res_dict in self_attn_dict.items():
+    with h5py.File(file_path, 'w') as file:
+        for t_step, res_dict in attn_dict.items():
             for res, attn_map in res_dict.items():
                 dataset_name = f'{t_step}/{res}'
                 file.create_dataset(dataset_name, data=attn_map)
 
 
-def dict_from_disk(filename: str) -> Dict[int, Dict[int, np.ndarray]]:
-    # Read from file
-    self_attn_dict: Dict[int, Dict[int, np.ndarray]] = {}
-    with h5py.File(f'{filename}.h5', 'r') as file:
-        for t_step in file.keys():
-            self_attn_dict[int(t_step)] = {}
-            for res in file[t_step].keys():
-                self_attn_dict[int(t_step)][int(res)] = file[t_step][res][:]
+def dict_from_disk(file_path: str) -> Dict[int, Dict[int, torch.Tensor]]:
+    assert file_path.endswith('.h5'), "Filename must end with .h5"
 
-    return self_attn_dict
+    # Read from file
+    attn_dict = {}
+    with h5py.File(file_path, 'r') as file:
+        for timestep in file.keys():
+            attn_dict[int(timestep)] = {}
+            for res in file[timestep].keys():
+                attn_dict[int(timestep)][int(res)] = file[timestep][res][:]
+
+    return attn_dict
 
 
 class DPLoss(torch.nn.Module):

@@ -12,6 +12,7 @@
 
 from typing import Dict, List, Tuple
 from math import ceil, sqrt
+import PIL
 
 import torch
 import numpy as np
@@ -79,8 +80,8 @@ def plot_attention_location(
         orig_res: int = 64,
         interpolate: bool = False,
         timestep: int = 300,
-        fig: Figure = None,     # Used when rendering animations
-        axs: np.ndarray = None  # Used when rendering animations
+        fig: Figure = None, # Used when rendering animations
+        axs: np.ndarray = None                # Used when rendering animations
     ) -> List[Artist]:
     """
     Plots a 2 x 8 grid of attention map subplots where each column shows the
@@ -197,21 +198,20 @@ def _attention_interpretations(
     ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Helper function that reshapes attention maps in two different ways to allow
-    visual comparison. Sums attention maps across all 8 heads.
+    visual comparison.
     Example for 64 x 64 self-attention maps:
 
-    A: (1, 8, 4096, 4096) -> (1, 8, 4096, 64,   64) -> (4096, 64,   64)
-    B: (1, 8, 4096, 4096) -> (1, 8,   64  64, 4096) -> (64,   64, 4096)
+    A: (4096, 4096) -> (4096, 64,   64)
+    B: (4096, 4096) ->   (64, 64, 4096)
     """
 
     assert res in res2weights.keys()
-    assert res2weights[res].shape[1] == 8      # Number of attention heads
-    assert res2weights[res].shape[2] == res**2
-    assert res2weights[res].shape[3] == res**2
+    assert res2weights[res].shape[0] == res**2
+    assert res2weights[res].shape[1] == res**2
 
-    # Reshape 64 x 64 self-attention maps and sum them across heads for visualisation
-    A = res2weights[res].reshape(1, 8, res*res, res, res).squeeze(0).sum(axis=0)
-    B = res2weights[res].reshape(1, 8, res, res, res*res).squeeze(0).sum(axis=0)
+    # Reshape 64 x 64 self-attention maps for visualisation
+    A = res2weights[res].reshape(res*res, res, res)
+    B = res2weights[res].reshape(res, res, res*res)
 
     # Normalise values for visualisation
     A -= A.min()
@@ -223,6 +223,13 @@ def _attention_interpretations(
     assert B.shape == (res, res, res**2)
 
     return A, B
+
+
+def show_image(image_path):
+  with open(image_path, "rb") as f:
+    image = np.array(PIL.Image.open(f))
+    plt.imshow(image)
+    plt.show()
 
 
 def plot_masks_grid(masks_tensor: torch.Tensor):
