@@ -46,14 +46,17 @@ def main():
         )
         model = StableDiffusion(img_width=512, img_height=512)
 
+    # Get list of filenames in DIRECTORY, filter out .DS_Store if necessary
+    files = os.listdir(DIRECTORY)
+    if ".DS_Store" in files:
+        files.remove(".DS_Store")
 
-    # Run image through VAE encoder
     print("\n=== Extracting self-attention maps and cross-attention maps ===")
-    for file in tqdm(os.listdir(DIRECTORY)):
-        # If .h5 feature files for file already exists, skip it
-        self_attn_path = f"{FEATURE_DIR}/{file.split('.jpg')[0]}" + "_cross"
-        cross_attn_path = f"{FEATURE_DIR}/{file.split('.jpg')[0]}" + "_cross"
-        if os.path.exists(self_attn_path + ".h5") and os.path.exists(cross_attn_path + ".h5"):
+    for image in tqdm(files):
+        # If .h5 feature files for image already exist, skip image
+        self_attn_path = f"{FEATURE_DIR}/{image.split('.jpg')[0]}" + "_cross"
+        cross_attn_path = f"{FEATURE_DIR}/{image.split('.jpg')[0]}" + "_cross"
+        if os.path.exists(self_attn_path+".h5") and os.path.exists(cross_attn_path+".h5"):
             continue
 
         # Dictionary of structure { timestep : { resolution : self-attention map } }
@@ -62,7 +65,7 @@ def main():
 
         # Load image, preprocess it, and run it through the VAE encoder
         with tf.device(device):
-            image_path = f"{DIRECTORY}/{file}"
+            image_path = f"{DIRECTORY}/{image}"
             image = process_image(image_path)
             image = augmenter(image)
             latent = vae(tf.expand_dims(image, axis=0), training=False)
