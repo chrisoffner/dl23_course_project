@@ -10,26 +10,23 @@ from stable_diffusion import StableDiffusion
 from utils import process_image, augmenter
 from my_utils import dict_to_disk
 
-'''
+"""
 Usage:
-- set `DIRECTORY` variable to the right path (path to the RGB images)
-- for the "self_attn_dict", decide how many self-attention maps you want to add
-  by un-/commenting (only 64x64 selected now)
-'''
+- set `IMG_DIR` to the directory path of the RGB images
+- set `FEATURE_DIR` to where the extracted features should be saved
+"""
 
-# DIRECTORY = "C:/Datasets/Resized_MSRA10K_Imgs_GT/Resized_images"
-DIRECTORY = "../data/ECSSD_resized/img"
-print(os.listdir(DIRECTORY))
+# This is where the RGB images are located
+IMG_DIR = "../data/ECSSD_resized/img"
+
+# This is where the extracted features will be saved
+FEATURE_DIR = "~/Downloads/ECSSD_resized/features"
+
+assert os.path.exists(IMG_DIR), f"Source directory {IMG_DIR} does not exist"
+assert os.path.exists(FEATURE_DIR), f"Target directory {FEATURE_DIR} does not exist"
 
 
 def main():
-    # Get the parent directory of DIRECTORY
-    parent_dir = os.path.dirname(DIRECTORY)
-
-    # Combine the parent directory with the new feature directory name
-    FEATURE_DIR = os.path.join(parent_dir, "features")
-    print(f"Features will be saved to {FEATURE_DIR}/")
-
     if not os.path.exists(FEATURE_DIR):
         os.makedirs(FEATURE_DIR)
 
@@ -47,16 +44,20 @@ def main():
         model = StableDiffusion(img_width=512, img_height=512)
 
     # Get list of filenames in DIRECTORY, filter out .DS_Store if necessary
-    files = os.listdir(DIRECTORY)
+    files = sorted(os.listdir(IMG_DIR))
     if ".DS_Store" in files:
         files.remove(".DS_Store")
 
     print("\n=== Extracting self-attention maps and cross-attention maps ===")
     for image in tqdm(files):
-        # If .h5 feature files for image already exist, skip image
-        self_attn_path = f"{FEATURE_DIR}/{image.split('.jpg')[0]}" + "_cross"
-        cross_attn_path = f"{FEATURE_DIR}/{image.split('.jpg')[0]}" + "_cross"
-        if os.path.exists(self_attn_path+".h5") and os.path.exists(cross_attn_path+".h5"):
+        # Constructing paths
+        filename = os.path.splitext(image)[0]
+        self_attn_path = f"{FEATURE_DIR}/{filename}_self.h5"
+        cross_attn_path = f"{FEATURE_DIR}/{filename}_cross.h5"
+
+        # If .h5 feature files for image already exist, skip image  
+        if os.path.exists(self_attn_path) and os.path.exists(cross_attn_path):
+            print(f"Skipping {image} because features already exist")
             continue
 
         # Dictionary of structure { timestep : { resolution : self-attention map } }
@@ -65,7 +66,7 @@ def main():
 
         # Load image, preprocess it, and run it through the VAE encoder
         with tf.device(device):
-            image_path = f"{DIRECTORY}/{image}"
+            image_path = f"{IMG_DIR}/{image}"
             image = process_image(image_path)
             image = augmenter(image)
             latent = vae(tf.expand_dims(image, axis=0), training=False)
@@ -75,11 +76,8 @@ def main():
             with tf.device(device):
                 # Extract all self-attention and cross-attention maps
                 self_attn_64,  self_attn_32,  self_attn_16,  self_attn_8, \
-                cross_attn_64, cross_attn_32, cross_attn_16, cross_attn_8 = model.generate_image(
-                    batch_size=1,
-                    latent=latent,
-                    timestep=timestep,
-                )
+                cross_attn_64, cross_attn_32, cross_attn_16, cross_attn_8 \
+                = model.generate_image(latent, timestep,)
 
                 # Average over attention heads and store attention maps for
                 # current time step in dictionary with half-precision (float16)

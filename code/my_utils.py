@@ -8,8 +8,10 @@ def dict_to_disk(
         attn_dict: Dict[int, Dict[int, torch.Tensor]],
         filename: str
     ):
+    assert filename.endswith('.h5'), "Filename must end with .h5"
+
     # Write to file
-    with h5py.File(f'{filename}.h5', 'w') as file:
+    with h5py.File(filename, 'w') as file:
         for t_step, res_dict in attn_dict.items():
             for res, attn_map in res_dict.items():
                 dataset_name = f'{t_step}/{res}'
@@ -17,9 +19,11 @@ def dict_to_disk(
 
 
 def dict_from_disk(filename: str) -> Dict[int, Dict[int, torch.Tensor]]:
+    assert filename.endswith('.h5'), "Filename must end with .h5"
+
     # Read from file
     self_attn_dict = {}
-    with h5py.File(f'{filename}.h5', 'r') as file:
+    with h5py.File(filename, 'r') as file:
         for t_step in file.keys():
             self_attn_dict[int(t_step)] = {}
             for res in file[t_step].keys():
