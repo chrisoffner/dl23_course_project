@@ -18,8 +18,7 @@ Usage:
 '''
 
 # DIRECTORY = "C:/Datasets/Resized_MSRA10K_Imgs_GT/Resized_images"
-# DIRECTORY = "data/Resized_MSRA10K_Imgs_GT/img"
-DIRECTORY = "../data/Resized_ECSSD/img"
+DIRECTORY = "../data/ECSSD_resized/img"
 print(os.listdir(DIRECTORY))
 
 
