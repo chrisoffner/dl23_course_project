@@ -5,12 +5,12 @@ import h5py
 
 
 def dict_to_disk(
-        self_attn_dict: Dict[int, Dict[int, torch.Tensor]],
+        attn_dict: Dict[int, Dict[int, torch.Tensor]],
         filename: str
     ):
     # Write to file
     with h5py.File(f'{filename}.h5', 'w') as file:
-        for t_step, res_dict in self_attn_dict.items():
+        for t_step, res_dict in attn_dict.items():
             for res, attn_map in res_dict.items():
                 dataset_name = f'{t_step}/{res}'
                 file.create_dataset(dataset_name, data=attn_map)

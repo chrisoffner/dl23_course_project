@@ -50,6 +50,12 @@ def main():
     # Run image through VAE encoder
     print("\n=== Extracting self-attention maps and cross-attention maps ===")
     for file in tqdm(os.listdir(DIRECTORY)):
+        # If .h5 feature files for file already exists, skip it
+        self_attn_path = f"{FEATURE_DIR}/{file.split('.jpg')[0]}" + "_cross"
+        cross_attn_path = f"{FEATURE_DIR}/{file.split('.jpg')[0]}" + "_cross"
+        if os.path.exists(self_attn_path + ".h5") and os.path.exists(cross_attn_path + ".h5"):
+            continue
+
         # Dictionary of structure { timestep : { resolution : self-attention map } }
         self_attn_dict: Dict[int, Dict[int, torch.Tensor]] = { }
         cross_attn_dict: Dict[int, Dict[int, torch.Tensor]] = { }
@@ -89,16 +95,9 @@ def main():
                 }
         
         # Save dictionaries to disk
-        dict_to_disk(
-            self_attn_dict=self_attn_dict,
-            filename=f"{FEATURE_DIR}/{file.split('.jpg')[0]}" + "_self"
-        )
+        dict_to_disk(attn_dict=self_attn_dict,  filename=self_attn_path)
+        dict_to_disk(attn_dict=cross_attn_dict, filename=cross_attn_path)
 
-        dict_to_disk(
-            self_attn_dict=cross_attn_dict,
-            filename=f"{FEATURE_DIR}/{file.split('.jpg')[0]}" + "_cross"
-        )
 
-        
 if __name__ == "__main__":
     main()
