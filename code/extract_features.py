@@ -68,8 +68,15 @@ def main():
             image = augmenter(image)
             latent = vae(tf.expand_dims(image, axis=0), training=False)
 
-        num_timesteps = 10
-        for timestep in torch.linspace(0, 999, num_timesteps, dtype=torch.int32).tolist():
+        n_timesteps = 10
+        timesteps = torch.linspace(
+            start=0,
+            end=999,
+            steps=n_timesteps,
+            dtype=torch.int32
+        ).tolist()
+
+        for timestep in timesteps:
             with tf.device(device):
                 # Extract all self-attention and cross-attention maps
                 self_attn_64,  self_attn_32,  self_attn_16,  self_attn_8, \
@@ -91,7 +98,7 @@ def main():
                     32: torch.from_numpy(cross_attn_32.mean(axis=(0,1))).half(),
                     64: torch.from_numpy(cross_attn_64.mean(axis=(0,1))).half()
                 }
-        
+
         # Save dictionaries to disk
         dict_to_disk(attn_dict=self_attn_dict,  file_path=self_attn_path)
         dict_to_disk(attn_dict=cross_attn_dict, file_path=cross_attn_path)
