@@ -13,9 +13,9 @@ The project currently adheres to the following structure:
                 - `{image_file_name_n}.jpg`
             - `gt`
                 - `{ground_truth_segmentation_file_name_1}.png`
-                - `{ground_truth_segmentation_file_name_2}.jpg`
+                - `{ground_truth_segmentation_file_name_2}.png`
                 - ...
-                - `{ground_truth_segmentation_file_name_n}.jpg`
+                - `{ground_truth_segmentation_file_name_n}.png`
         - `{dataset_name_2}`
             - ...
             
