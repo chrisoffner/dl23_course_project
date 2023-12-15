@@ -20,10 +20,9 @@ from keras_cv.src.models.stable_diffusion.clip_tokenizer import SimpleTokenizer
 from keras_cv.src.models.stable_diffusion.constants import _ALPHAS_CUMPROD
 from keras_cv.src.models.stable_diffusion.constants import _UNCONDITIONAL_TOKENS
 from keras_cv.src.models.stable_diffusion.decoder import Decoder
-from .diffusion_model import DiffusionModel
+from diffusion_model import DiffusionModel
 from keras_cv.src.models.stable_diffusion.image_encoder import ImageEncoder
 from keras_cv.src.models.stable_diffusion.text_encoder import TextEncoder
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
