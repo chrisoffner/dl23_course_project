@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch
 import tensorflow as tf
 from keras_cv.src.models.stable_diffusion.image_encoder import ImageEncoder
-from diffusion_models.stable_diffusion import StableDiffusion
+from stable_diffusion import StableDiffusion
 
 from utils import process_image, augmenter
 from my_utils import dict_to_disk
@@ -19,7 +19,7 @@ Usage:
 
 # DIRECTORY = "C:/Datasets/Resized_MSRA10K_Imgs_GT/Resized_images"
 # DIRECTORY = "data/Resized_MSRA10K_Imgs_GT/img"
-DIRECTORY = "data/Resized_ECSSD/img"
+DIRECTORY = "../data/Resized_ECSSD/img"
 print(os.listdir(DIRECTORY))
 
 
