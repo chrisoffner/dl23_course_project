@@ -89,7 +89,7 @@ class StableDiffusionBase:
 
   def generate_image(
       self,
-      encoded_text,
+      encoded_text=None,
       negative_prompt=None,
       batch_size=1,
       num_steps=50,
