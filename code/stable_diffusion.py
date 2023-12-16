@@ -48,7 +48,6 @@ class StableDiffusionBase:
     self._text_encoder = None
     self._diffusion_model = None
     self._decoder = None
-    self._tokenizer = None
 
     self.jit_compile = jit_compile
 
