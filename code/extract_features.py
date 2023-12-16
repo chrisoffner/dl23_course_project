@@ -1,6 +1,7 @@
 import os
 from tqdm import tqdm
 from typing import Dict
+import h5py
 
 import torch
 import tensorflow as tf
@@ -22,15 +23,24 @@ IMG_DIR = "../data/ECSSD_resized/img"
 # This is where the extracted features will be saved
 FEATURE_DIR = "/Users/chrisoffner3d/Downloads/ECSSD_resized/features"
 
+# This is where the context vector is located
+CONTEXT_PATH = "../data/context.h5"
+
 assert os.path.exists(IMG_DIR), f"Source directory {IMG_DIR} does not exist"
 assert os.path.exists(FEATURE_DIR), f"Target directory {FEATURE_DIR} does not exist"
 
 
 def main():
-    print(f"GPUs available: ", tf.config.experimental.list_physical_devices("GPU"))
-    device = tf.test.gpu_device_name()
-    print(tf.test.gpu_device_name())
+    # print(f"GPUs available: ", tf.config.experimental.list_physical_devices("GPU"))
+    # device = tf.test.gpu_device_name()
+    # print(tf.test.gpu_device_name())
 
+    device = "/cpu:0"
+
+    # Load random but fixed context vector
+    with h5py.File(CONTEXT_PATH, 'r') as file:
+        context = file["context"][:]
+        
     print("\n=== Initializing Stable Diffusion Model ===")
     with tf.device(device):
         image_encoder = ImageEncoder()
@@ -81,7 +91,11 @@ def main():
                 # Extract all self-attention and cross-attention maps
                 self_attn_64,  self_attn_32,  self_attn_16,  self_attn_8, \
                 cross_attn_64, cross_attn_32, cross_attn_16, cross_attn_8 \
-                = model.generate_image(latent=latent, timestep=timestep)
+                = model.generate_image(
+                    encoded_text=context,
+                    latent=latent,
+                    timestep=timestep
+                )
 
                 # Average over attention heads and store attention maps for
                 # current time step in dictionary with half-precision (float16)

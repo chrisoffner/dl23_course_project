@@ -241,7 +241,7 @@ def plot_masks_grid(masks_tensor: torch.Tensor):
 
     for idx, ax in enumerate(axes):
         if idx < masks_tensor.shape[0]:
-            ax.imshow(masks_tensor[idx], cmap='gray')
+            ax.imshow(masks_tensor[idx])
             ax.axis('off')
             ax.set_title(f'Index: {idx}')
         else:
