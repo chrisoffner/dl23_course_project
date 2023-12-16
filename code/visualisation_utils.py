@@ -13,6 +13,7 @@
 from typing import Dict, List, Tuple
 from math import ceil, sqrt
 import PIL
+from PIL import Image
 
 import torch
 import numpy as np
@@ -248,3 +249,29 @@ def plot_masks_grid(masks_tensor: torch.Tensor):
 
     plt.tight_layout()
     plt.show()
+
+def plot_image_and_mask(image_path, mask_path):
+    # Load image and mask
+    image = Image.open(image_path)
+    mask = Image.open(mask_path)
+
+    # Plotting
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+    # Display the image
+    axes[0].imshow(image)
+    axes[0].set_title('Image')
+    axes[0].axis('off')
+
+    # Display the mask
+    axes[1].imshow(mask, cmap='gray')
+    axes[1].set_title('Binary Segmentation Mask')
+    axes[1].axis('off')
+
+    plt.show()
+
+def count_white_pixels(mask_path):
+    mask = Image.open(mask_path)
+    mask_array = np.array(mask)
+    white_pixel_count = np.sum(mask_array == 255)
+    return white_pixel_count

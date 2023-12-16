@@ -90,3 +90,32 @@ def decode_masks_from_json(json_path: str) -> torch.Tensor:
     
     # Convert to a PyTorch tensor
     return torch.tensor(stacked_masks, dtype=torch.float32)
+
+def process_image_mask_pairs(img_folder, gt_folder, output_file_path, lower_threshold, upper_threshold):
+    # Initialize a count variable to track the number of filenames written
+    num_filenames_written = 0
+
+    # Open the file in write mode, clearing existing content if the file exists
+    with open(output_file_path, 'w') as output_file:
+        # Iterate over all image files in the img folder
+        for img_filename in os.listdir(img_folder):
+            # Check if the file is a JPG image
+            if img_filename.endswith('.jpg'):
+                img_path = os.path.join(img_folder, img_filename)
+                
+                # Form the corresponding mask file path based on the image filename
+                mask_filename = img_filename.replace('.jpg', '.png')
+                mask_path = os.path.join(gt_folder, mask_filename)
+
+                # Check if the mask file exists
+                if os.path.exists(mask_path):
+                    # Count white pixels in the mask
+                    white_pixel_count = count_white_pixels(mask_path)
+
+                    # Check if the count is within the specified thresholds
+                    if lower_threshold <= white_pixel_count <= upper_threshold:
+                        # Write the filenames to the output file
+                        output_file.write(f'{img_filename[:-4]}\n')
+                        num_filenames_written += 1
+
+    return num_filenames_written

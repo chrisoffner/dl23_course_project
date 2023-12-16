@@ -28,7 +28,6 @@ class DiffusionModel(keras.Model):
     x = PaddedConv2D(320, kernel_size=3, padding=1)(latent)
     outputs.append(x)
 
-<<<<<<< HEAD:code/diffusion_model.py
     self_attn_64 = 0.0
     cross_attn_64 = 0.0
     for _ in range(2):
@@ -36,18 +35,10 @@ class DiffusionModel(keras.Model):
       x,temp, x_temp = SpatialTransformer(8, 40, fully_connected=False)([x, context])
       self_attn_64 = tf.math.add(self_attn_64, temp/5)
       cross_attn_64 = tf.math.add(cross_attn_64, x_temp/5)
-=======
-    weight_64 = 0.0
-    for _ in range(2):
-      x = ResBlock(320)([x, t_emb])
-      x,temp = SpatialTransformer(8, 40, fully_connected=False)([x, context])
-      weight_64 = tf.math.add(weight_64, temp/5)
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
       outputs.append(x)
     x = PaddedConv2D(320, 3, strides=2, padding=1)(x)  # Downsample 2x
     outputs.append(x)
 
-<<<<<<< HEAD:code/diffusion_model.py
     self_attn_32 = 0.0
     cross_attn_32 = 0.0
     for _ in range(2):
@@ -55,18 +46,10 @@ class DiffusionModel(keras.Model):
       x,temp, x_temp = SpatialTransformer(8, 80, fully_connected=False)([x, context])
       self_attn_32 = tf.math.add(self_attn_32, temp/5)
       cross_attn_32 = tf.math.add(cross_attn_32, x_temp/5)
-=======
-    weight_32 = 0.0
-    for _ in range(2):
-      x = ResBlock(640)([x, t_emb])
-      x,temp = SpatialTransformer(8, 80, fully_connected=False)([x, context])
-      weight_32 = tf.math.add(weight_32, temp/5)
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
       outputs.append(x)
     x = PaddedConv2D(640, 3, strides=2, padding=1)(x)  # Downsample 2x
     outputs.append(x)
 
-<<<<<<< HEAD:code/diffusion_model.py
     self_attn_16 = 0.0
     cross_attn_16 = 0.0
     for _ in range(2):
@@ -74,13 +57,6 @@ class DiffusionModel(keras.Model):
       x,temp, x_temp = SpatialTransformer(8, 160, fully_connected=False)([x, context])
       self_attn_16 = tf.math.add(self_attn_16, temp/5)
       cross_attn_16 = tf.math.add(cross_attn_16, x_temp/5)
-=======
-    weight_16 = 0.0
-    for _ in range(2):
-      x = ResBlock(1280)([x, t_emb])
-      x,temp = SpatialTransformer(8, 160, fully_connected=False)([x, context])
-      weight_16 = tf.math.add(weight_16, temp/5)
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
       outputs.append(x)
     x = PaddedConv2D(1280, 3, strides=2, padding=1)(x)  # Downsample 2x
     outputs.append(x)
@@ -92,11 +68,7 @@ class DiffusionModel(keras.Model):
     # Middle flow
 
     x = ResBlock(1280)([x, t_emb])
-<<<<<<< HEAD:code/diffusion_model.py
     x, self_attn_8, cross_attn_8 = SpatialTransformer(8, 160, fully_connected=False)([x, context])
-=======
-    x, weight_8 = SpatialTransformer(8, 160, fully_connected=False)([x, context])
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
     x = ResBlock(1280)([x, t_emb])
 
     # Upsampling flow
@@ -109,40 +81,25 @@ class DiffusionModel(keras.Model):
     for _ in range(3):
       x = keras.layers.Concatenate()([x, outputs.pop()])
       x = ResBlock(1280)([x, t_emb])
-<<<<<<< HEAD:code/diffusion_model.py
       x, temp, x_temp = SpatialTransformer(8, 160, fully_connected=False)([x, context])
       self_attn_16 = tf.math.add(self_attn_16, temp/5)
       cross_attn_16 = tf.math.add(cross_attn_16, x_temp/5)
-=======
-      x, temp = SpatialTransformer(8, 160, fully_connected=False)([x, context])
-      weight_16 = tf.math.add(weight_16, temp/5)
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
     x = Upsample(1280)(x)
 
     for _ in range(3):
       x = keras.layers.Concatenate()([x, outputs.pop()])
       x = ResBlock(640)([x, t_emb])
-<<<<<<< HEAD:code/diffusion_model.py
       x, temp, x_temp = SpatialTransformer(8, 80, fully_connected=False)([x, context])
       self_attn_32 = tf.math.add(self_attn_32, temp/5)
       cross_attn_32 = tf.math.add(cross_attn_32, x_temp/5)
-=======
-      x, temp = SpatialTransformer(8, 80, fully_connected=False)([x, context])
-      weight_32 = tf.math.add(weight_32, temp/5)
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
     x = Upsample(640)(x)
 
     for _ in range(3):
       x = keras.layers.Concatenate()([x, outputs.pop()])
       x = ResBlock(320)([x, t_emb])
-<<<<<<< HEAD:code/diffusion_model.py
       x, temp, x_temp = SpatialTransformer(8, 40, fully_connected=False)([x, context])
       self_attn_64 = tf.math.add(self_attn_64, temp/5)
       cross_attn_64 = tf.math.add(cross_attn_64, x_temp/3)
-=======
-      x, temp = SpatialTransformer(8, 40, fully_connected=False)([x, context])
-      weight_64 = tf.math.add(weight_64, temp/5)
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
 
     # Exit flow
 
@@ -150,12 +107,8 @@ class DiffusionModel(keras.Model):
     x = keras.layers.Activation("swish")(x)
     output = PaddedConv2D(4, kernel_size=3, padding=1)(x)
 
-<<<<<<< HEAD:code/diffusion_model.py
     outputs = [output, self_attn_64, self_attn_32, self_attn_16, self_attn_8, cross_attn_64, cross_attn_32, cross_attn_16, cross_attn_8
                ]
-=======
-    outputs = [output, weight_64, weight_32, weight_16, weight_8]
->>>>>>> dev_cb:diffusion_models/diffusion_model.py
     super().__init__([latent, t_embed_input, context], outputs, name=name)
 
     if download_weights:
@@ -229,9 +182,9 @@ class SpatialTransformer(keras.layers.Layer):
     x = self.norm(inputs)
     x = self.proj1(x)
     x = tf.reshape(x, (-1, h * w, c))
-    x, self_weights = self.transformer_block([x, context])
+    x,self_weights,cross_weights = self.transformer_block([x, context])
     x = tf.reshape(x, (-1, h, w, c))
-    return self.proj2(x) + inputs, self_weights
+    return self.proj2(x) + inputs, self_weights, cross_weights
 
 
 class BasicTransformerBlock(keras.layers.Layer):
@@ -250,9 +203,9 @@ class BasicTransformerBlock(keras.layers.Layer):
     inputs, context = inputs
     x, self_weights = self.attn1([self.norm1(inputs), None])
     x = x + inputs
-    x_temp, _ = self.attn2([self.norm2(x), context])
+    x_temp, cross_weights = self.attn2([self.norm2(x), context])
     x = x_temp + x
-    return self.dense(self.geglu(self.norm3(x))) + x, self_weights
+    return self.dense(self.geglu(self.norm3(x))) + x, self_weights, cross_weights
 
 class CrossAttention(keras.layers.Layer):
 
