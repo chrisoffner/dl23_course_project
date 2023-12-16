@@ -20,11 +20,9 @@ from keras_cv.src.models.stable_diffusion.clip_tokenizer import SimpleTokenizer
 from keras_cv.src.models.stable_diffusion.constants import _ALPHAS_CUMPROD
 from keras_cv.src.models.stable_diffusion.constants import _UNCONDITIONAL_TOKENS
 from keras_cv.src.models.stable_diffusion.decoder import Decoder
-from .diffusion_model import DiffusionModel
+from diffusion_models.diffusion_model import DiffusionModel
 from keras_cv.src.models.stable_diffusion.image_encoder import ImageEncoder
 from keras_cv.src.models.stable_diffusion.text_encoder import TextEncoder
-from keras_cv.src.models.stable_diffusion.text_encoder import TextEncoderV2
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
@@ -38,8 +36,8 @@ class StableDiffusionBase:
         self,
         img_height=512,
         img_width=512,
-        jit_compile=False,):
-        
+        jit_compile=False,
+    ):
         # UNet requires multiples of 2**7 = 128
         img_height = round(img_height / 128) * 128
         img_width = round(img_width / 128) * 128
@@ -54,33 +52,6 @@ class StableDiffusionBase:
         self._tokenizer = None
 
         self.jit_compile = jit_compile
-
-    def text_to_image(
-        self,
-        prompt,
-        negative_prompt=None,
-        batch_size=1,
-        num_steps=50,
-        unconditional_guidance_scale=7.5,
-        seed=None,
-        latent=None,
-        timestep=None,
-    ):
-        if prompt is not None:
-            encoded_text = self.encode_text(prompt)
-        else:
-            encoded_text = None
-
-        return self.generate_image(
-            encoded_text,
-            negative_prompt=negative_prompt,
-            batch_size=batch_size,
-            num_steps=num_steps,
-            unconditional_guidance_scale=unconditional_guidance_scale,
-            seed=seed,
-            latent=latent,
-            timestep=timestep,
-        )
 
     def encode_text(self, prompt):
         """Encodes a prompt into a latent text encoding.
@@ -104,22 +75,22 @@ class StableDiffusionBase:
         img = model.generate_image(encoded_text)
         ```
         """
-
-        tokens = self.tokenizer.encode(prompt)
-        if len(tokens) > MAX_PROMPT_LENGTH:
+        # Tokenize prompt (i.e. starting context)
+        inputs = self.tokenizer.encode(prompt)
+        if len(inputs) > MAX_PROMPT_LENGTH:
             raise ValueError(
                 f"Prompt is too long (should be <= {MAX_PROMPT_LENGTH} tokens)"
             )
-        tokens = tokens + [49407] * (MAX_PROMPT_LENGTH - len(tokens))
-        tokens = tf.convert_to_tensor([tokens], dtype=tf.int32)
+        phrase = inputs + [49407] * (MAX_PROMPT_LENGTH - len(inputs))
+        phrase = tf.convert_to_tensor([phrase], dtype=tf.int32)
 
-        encoded_text = self.text_encoder.predict_on_batch([tokens, self._get_pos_ids()])
+        context = self.text_encoder.predict_on_batch([phrase, self._get_pos_ids()])
 
-        return encoded_text
+        return context
 
     def generate_image(
         self,
-        encoded_text,
+        encoded_text=None,
         negative_prompt=None,
         batch_size=1,
         num_steps=50,
@@ -177,6 +148,10 @@ class StableDiffusionBase:
                 "noise when it's not already user-specified."
             )
 
+        # Chris: I added this so we could output and look at the output latents of
+        #        the denoising process.
+        # output_image = None
+
         if negative_prompt is None:
             unconditional_context = tf.repeat(
                 self._get_unconditional_context(), batch_size, axis=0
@@ -190,34 +165,40 @@ class StableDiffusionBase:
         if latent is not None and timestep is not None:
             t_emb = self._get_timestep_embedding(timestep, batch_size)
             if encoded_text is not None:
+                # CONDITIONAL CONTEXT
                 context = self._expand_tensor(encoded_text, batch_size)
                 (
                     conditional_latent,
-                    weight_64,
-                    weight_32,
-                    weight_16,
-                    weight_8,
-                    x_weights_64,
-                    x_weights_32,
-                    x_weights_16,
-                    x_weights_8,
+                    self_attn_64,
+                    self_attn_32,
+                    self_attn_16,
+                    self_attn_8,
+                    cross_attn_64,
+                    cross_attn_32,
+                    cross_attn_16,
+                    cross_attn_8,
                 ) = self.diffusion_model.predict_on_batch([latent, t_emb, context])
             else:
+                # UNCONDITIONAL CONTEXT
                 (
                     unconditional_latent,
-                    weight_64,
-                    weight_32,
-                    weight_16,
-                    weight_8,
-                    x_weights_64,
-                    x_weights_32,
-                    x_weights_16,
-                    x_weights_8,
+                    self_attn_64,
+                    self_attn_32,
+                    self_attn_16,
+                    self_attn_8,
+                    cross_attn_64,
+                    cross_attn_32,
+                    cross_attn_16,
+                    cross_attn_8,
                 ) = self.diffusion_model.predict_on_batch(
                     [latent, t_emb, unconditional_context]
                 )
+                # Chris: Assign unconditional_latent as output_image so we can access it
+                #        outside the scope of this `else`-block.
+                # output_image = unconditional_latent
         # ====================== Extract attention maps ======================
         else:
+            # Chris: Ignore this, we don't get here
             context = self._expand_tensor(encoded_text, batch_size)
             if diffusion_noise is not None:
                 diffusion_noise = tf.squeeze(diffusion_noise)
@@ -238,7 +219,6 @@ class StableDiffusionBase:
                 latent_prev = latent  # Set aside the previous latent vector
                 t_emb = self._get_timestep_embedding(timestep, batch_size)
 
-                # ,_,_,_,_,_,_,_
                 (
                     unconditional_latent,
                     _,
@@ -255,14 +235,14 @@ class StableDiffusionBase:
                 # , down1_weights, down2_weights, down3_weights, mid_weights, up1_weights, up2_weights, up3_weights
                 (
                     latent,
-                    weight_64,
-                    weight_32,
-                    weight_16,
-                    weight_8,
-                    x_weights_64,
-                    x_weights_32,
-                    x_weights_16,
-                    x_weights_8,
+                    self_attn_64,
+                    self_attn_32,
+                    self_attn_16,
+                    self_attn_8,
+                    cross_attn_64,
+                    cross_attn_32,
+                    cross_attn_16,
+                    cross_attn_8,
                 ) = self.diffusion_model.predict_on_batch([latent, t_emb, context])
 
                 latent = unconditional_latent + unconditional_guidance_scale * (
@@ -275,18 +255,19 @@ class StableDiffusionBase:
                 progbar.update(iteration)
 
         # Decoding stage
-        decoded = self.decoder.predict_on_batch(latent)
-        decoded = ((decoded + 1) / 2) * 255
+        # output_image = self.decoder.predict_on_batch(output_image)
+        # output_image = ((output_image + 1) / 2) * 255
+        # output_image = np.clip(output_image, 0, 255).astype("uint8")
+
         return (
-            np.clip(decoded, 0, 255).astype("uint8"),
-            weight_64,
-            weight_32,
-            weight_16,
-            weight_8,
-            x_weights_64,
-            x_weights_32,
-            x_weights_16,
-            x_weights_8,
+            self_attn_64,
+            self_attn_32,
+            self_attn_16,
+            self_attn_8,
+            cross_attn_64,
+            cross_attn_32,
+            cross_attn_16,
+            cross_attn_8,
         )
 
     def _get_unconditional_context(self):
@@ -393,50 +374,6 @@ class StableDiffusionBase:
 
 
 class StableDiffusion(StableDiffusionBase):
-    """Keras implementation of Stable Diffusion.
-
-    Note that the StableDiffusion API, as well as the APIs of the sub-components
-    of StableDiffusion (e.g. ImageEncoder, DiffusionModel) should be considered
-    unstable at this point. We do not guarantee backwards compatability for
-    future changes to these APIs.
-
-    Stable Diffusion is a powerful image generation model that can be used,
-    among other things, to generate pictures according to a short text
-    description (called a "prompt").
-
-    Arguments:
-        img_height: int, height of the images to generate, in pixel. Note that
-          only multiples of 128 are supported; the value provided will be rounded
-          to the nearest valid value. Defaults to 512.
-        img_width: int, width of the images to generate, in pixel. Note that only
-          multiples of 128 are supported; the value provided will be rounded to
-          the nearest valid value. Defaults to 512.
-        jit_compile: bool, whether to compile the underlying models to XLA. This
-          can lead to a significant speedup on some systems. Defaults to False.
-
-    Example:
-
-    ```python
-    from keras_cv.models import StableDiffusion
-    from PIL import Image
-
-    model = StableDiffusion(img_height=512, img_width=512, jit_compile=True)
-    img = model.text_to_image(
-        prompt="A beautiful horse running through a field",
-        batch_size=1,  # How many images to generate at once
-        num_steps=25,  # Number of iterations (controls image quality)
-        seed=123,  # Set this to always get the same image from the same prompt
-    )
-    Image.fromarray(img[0]).save("horse.png")
-    print("saved at horse.png")
-    ```
-
-    References:
-    - [About Stable
-      Diffusion](https://stability.ai/blog/stable-diffusion-announcement)
-    - [Original implementation](https://github.com/CompVis/stable-diffusion)
-    """  # noqa: E501
-
     def __init__(
         self,
         img_height=512,

@@ -108,3 +108,7 @@ wcwidth==0.2.8
 Werkzeug==3.0.1
 wrapt==1.14.1
 zipp==3.17.0
+
+
+# manually added later:
+pycocotools
