@@ -35,7 +35,7 @@ def main():
     # device = tf.test.gpu_device_name()
     # print(tf.test.gpu_device_name())
 
-    device = "/cpu:0"
+    device = "cpu"
 
     # Load random but fixed context vector
     with h5py.File(CONTEXT_PATH, 'r') as file:
