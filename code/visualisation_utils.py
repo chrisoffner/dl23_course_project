@@ -11,7 +11,10 @@
 
 
 from typing import Dict, List, Tuple
+from math import ceil, sqrt
+import PIL
 
+import torch
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.artist import Artist
@@ -195,21 +198,20 @@ def _attention_interpretations(
     ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Helper function that reshapes attention maps in two different ways to allow
-    visual comparison. Sums attention maps across all 8 heads.
+    visual comparison.
     Example for 64 x 64 self-attention maps:
 
-    A: (1, 8, 4096, 4096) -> (1, 8, 4096, 64,   64) -> (4096, 64,   64)
-    B: (1, 8, 4096, 4096) -> (1, 8,   64  64, 4096) -> (64,   64, 4096)
+    A: (4096, 4096) -> (4096, 64,   64)
+    B: (4096, 4096) ->   (64, 64, 4096)
     """
 
     assert res in res2weights.keys()
-    assert res2weights[res].shape[1] == 8      # Number of attention heads
-    assert res2weights[res].shape[2] == res**2
-    assert res2weights[res].shape[3] == res**2
+    assert res2weights[res].shape[0] == res**2
+    assert res2weights[res].shape[1] == res**2
 
-    # Reshape 64 x 64 self-attention maps and sum them across heads for visualisation
-    A = res2weights[res].reshape(1, 8, res*res, res, res).squeeze(0).sum(axis=0)
-    B = res2weights[res].reshape(1, 8, res, res, res*res).squeeze(0).sum(axis=0)
+    # Reshape 64 x 64 self-attention maps for visualisation
+    A = res2weights[res].reshape(res*res, res, res)
+    B = res2weights[res].reshape(res, res, res*res)
 
     # Normalise values for visualisation
     A -= A.min()
@@ -222,8 +224,27 @@ def _attention_interpretations(
 
     return A, B
 
+
 def show_image(image_path):
   with open(image_path, "rb") as f:
     image = np.array(PIL.Image.open(f))
     plt.imshow(image)
+    plt.show()
+
+
+def plot_masks_grid(masks_tensor: torch.Tensor):
+    grid_size = ceil(sqrt(masks_tensor.size(0)))
+
+    _, axes = plt.subplots(grid_size, grid_size, figsize=(15, 15))
+    axes = axes.flatten()
+
+    for idx, ax in enumerate(axes):
+        if idx < masks_tensor.shape[0]:
+            ax.imshow(masks_tensor[idx], cmap='gray')
+            ax.axis('off')
+            ax.set_title(f'Index: {idx}')
+        else:
+            ax.axis('off')  # Hide axes for empty plots
+
+    plt.tight_layout()
     plt.show()
