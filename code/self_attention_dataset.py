@@ -39,7 +39,7 @@ class CustomDataset(Dataset):
         mask_tensor = transform(mask).squeeze(0)
         mask_tensor = mask_tensor.view(-1,1) # (4096,1)
         
-        # added only for visualization
+        # added only for visualization purposes (not necessary for training)
         image_dir = self.mask_dir.replace("gt","img")
         image = Image.open(f"{image_dir}/{index}.jpg")
         image_tensor = transform(image).squeeze(0)

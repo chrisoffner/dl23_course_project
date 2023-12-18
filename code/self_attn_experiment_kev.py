@@ -35,7 +35,7 @@ class SelfAttnExperiment(torch.nn.Module):
         assert x.shape == (self.n_timesteps, self.res**2, self.res, self.res)
 
         # Multiply each time step with its corresponding scalar
-        x = x * self.sigmoid(self.timestep_weights.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)) ## why sigmoid? bc positive values only?
+        x = x * self.sigmoid(self.timestep_weights.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)) 
         
         # Sum across time steps
         x = x.sum(dim=0) # (4096,64,64)
