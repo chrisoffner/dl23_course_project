@@ -42,6 +42,8 @@ class LinearProbe(torch.nn.Module):
     def __init__(self, n_timesteps: int = 10):
         super().__init__()
 
+        # self.instance_norm = torch.nn.InstanceNorm2d(77)
+
         self.n_timesteps = n_timesteps
         # self.sigmoid = torch.nn.Identity()#torch.nn.Sigmoid()
 
@@ -77,6 +79,12 @@ class LinearProbe(torch.nn.Module):
         assert cross_attn_16.shape == (self.n_timesteps, 77, 16, 16)
         assert cross_attn_32.shape == (self.n_timesteps, 77, 32, 32)
         assert cross_attn_64.shape == (self.n_timesteps, 77, 64, 64)
+
+        # Normalize cross-attention maps
+        # cross_attn_8 = self.instance_norm(cross_attn_8)
+        # cross_attn_16 = self.instance_norm(cross_attn_16)
+        # cross_attn_32 = self.instance_norm(cross_attn_32)
+        # cross_attn_64 = self.instance_norm(cross_attn_64)
 
         # Multiply each time step with its corresponding scalar
         t_weighted_8 = cross_attn_8 * self.ts_weights_8[:, None, None, None]
