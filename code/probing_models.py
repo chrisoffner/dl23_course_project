@@ -44,97 +44,48 @@ class DumbExperimentProbe(torch.nn.Module):
 class LinearProbe(torch.nn.Module):
     def __init__(
             self,
-            n_timesteps: int = 10
-        ):
+            n_timesteps: int = 10,
+            n_channels: int = 77,
+            res_combinations: torch.Tensor =torch.tensor([1, 1, 1, 1]),
+            resolutions: List[int] = [8, 16, 32, 64]):
         super().__init__()
+        self.n_timesteps      = n_timesteps
+        self.n_channels       = n_channels
+        self.res_combinations = res_combinations # Selects which resolutions to use
+        self.resolutions      = resolutions
 
-        self.n_timesteps = n_timesteps
-        # self.sigmoid = torch.nn.Identity()#torch.nn.Sigmoid()
+        resolutions = [8, 16, 32, 64]
+        self.ts_weights = torch.nn.ParameterDict({f'{res}': self._init_weights(n_timesteps, True) for res in resolutions})
+        self.ch_weights = torch.nn.ParameterDict({f'{res}': self._init_weights(n_channels) for res in resolutions})
+        self.res_weights = self._init_weights(4, True)
 
-        # Define timestep weights for each resolution
-        # Each timestep weight is a scalar that gets multiplied with
-        # the (77, res, res) cross-attention maps for that timestep
-        self.ts_weights_8  = self._init_weights(n_timesteps)
-        self.ts_weights_16 = self._init_weights(n_timesteps)
-        self.ts_weights_32 = self._init_weights(n_timesteps)
-        self.ts_weights_64 = self._init_weights(n_timesteps)
+    def forward(self, *cross_attn_maps):
+        batch_size = cross_attn_maps[0].size(0)
+        assert all(map(lambda x: x.size(0) == batch_size, cross_attn_maps)), "All inputs must have the same batch size"
+        assert len(cross_attn_maps) == 4  # For 4 resolutions: 8, 16, 32, 64
 
-        # Define channel weights for each resolution
-        # Each channel weight is a scalar that gets multiplied with
-        # the (res, res) cross-attention map for that channel
-        self.ch_weights_8  = self._init_weights(77)
-        self.ch_weights_16 = self._init_weights(77)
-        self.ch_weights_32 = self._init_weights(77)
-        self.ch_weights_64 = self._init_weights(77)
+        result = torch.zeros(batch_size, 64, 64, device=cross_attn_maps[0].device)
+        for i, cross_attn in enumerate(cross_attn_maps):
+            resolution = self.resolutions[i]  # 8, 16, 32, 64
+            ts_weight  = self.ts_weights[str(resolution)]
+            ch_weight  = self.ch_weights[str(resolution)]
 
-        # Define resolution weights for each resolution
-        # Each resolution weight is a scalar that gets multiplied with the
-        # (64, 64) interpolated cross-attention map for that resolution
-        self.res_weights = self._init_weights(4)
-    
-    def forward(
-            self,
-            cross_attn_8:  torch.Tensor,
-            cross_attn_16: torch.Tensor,
-            cross_attn_32: torch.Tensor,
-            cross_attn_64: torch.Tensor
-        ) -> torch.Tensor:
-        assert cross_attn_8.shape  == (self.n_timesteps, 77,  8,  8)
-        assert cross_attn_16.shape == (self.n_timesteps, 77, 16, 16)
-        assert cross_attn_32.shape == (self.n_timesteps, 77, 32, 32)
-        assert cross_attn_64.shape == (self.n_timesteps, 77, 64, 64)
+            # Weighting and summing across time steps and channels
+            t_sum  = (cross_attn * ts_weight[None, :, None, None, None]).sum(dim=1)
+            ch_sum = (t_sum * ch_weight[None, :, None, None]).sum(dim=1)
 
-        # Multiply each time step with its corresponding scalar
-        t_weighted_8  = cross_attn_8  * self.ts_weights_8[:,  None, None, None]
-        t_weighted_16 = cross_attn_16 * self.ts_weights_16[:, None, None, None]
-        t_weighted_32 = cross_attn_32 * self.ts_weights_32[:, None, None, None]
-        t_weighted_64 = cross_attn_64 * self.ts_weights_64[:, None, None, None]
-
-        # Compute weighted sum across time steps for each resolution
-        t_sum_8  = t_weighted_8.sum(dim=0)
-        t_sum_16 = t_weighted_16.sum(dim=0)
-        t_sum_32 = t_weighted_32.sum(dim=0)
-        t_sum_64 = t_weighted_64.sum(dim=0)
-
-        # Multiply each channel with its corresponding scalar
-        ch_weighted_8  = t_sum_8  * self.ch_weights_8[:,  None, None]
-        ch_weighted_16 = t_sum_16 * self.ch_weights_16[:, None, None]
-        ch_weighted_32 = t_sum_32 * self.ch_weights_32[:, None, None]
-        ch_weighted_64 = t_sum_64 * self.ch_weights_64[:, None, None]
-
-        # Compute weighted sum across channels for each resolution
-        ch_sum_8  = ch_weighted_8.sum(dim=0)
-        ch_sum_16 = ch_weighted_16.sum(dim=0)
-        ch_sum_32 = ch_weighted_32.sum(dim=0)
-        ch_sum_64 = ch_weighted_64.sum(dim=0)
-
-        # Interpolate cross-attention maps to (64, 64) resolution
-        ch_sum_8  = self._upscale_to_64(ch_sum_8)
-        ch_sum_16 = self._upscale_to_64(ch_sum_16)
-        ch_sum_32 = self._upscale_to_64(ch_sum_32)
-
-        # Multiply each resolution with its corresponding scalar
-        res_weighted_8  = ch_sum_8  * self.res_weights[0]
-        res_weighted_16 = ch_sum_16 * self.res_weights[1]
-        res_weighted_32 = ch_sum_32 * self.res_weights[2]
-        res_weighted_64 = ch_sum_64 * self.res_weights[3]
-
-        # Compute weighted sum across resolutions
-        result = res_weighted_8 + res_weighted_16 + res_weighted_32 + res_weighted_64
-
-        assert result.shape == (64, 64)
+            # Upscaling to 64x64
+            if resolution != 64:
+                ch_sum = self._upscale_to_64(ch_sum)
+            
+            # Weighting and summing across resolutions
+            result += ch_sum * self.res_weights[i] * self.res_combinations[i]
 
         return result.sigmoid()
-    
-    def _init_weights(self, n_weights: int) -> torch.nn.Parameter:
-        return torch.nn.Parameter(
-            torch.randn(n_weights),
-            requires_grad=True
-        )
-    
-    def _upscale_to_64(self, x: torch.Tensor) -> torch.Tensor:
-        return torch.nn.functional.interpolate(
-            x[None, None, :, :],
-            size=(64, 64),
-            mode="bicubic"
-        ).squeeze()
+
+    def _init_weights(self, n_weights, non_negative=False):
+        weight_tensor = torch.rand(n_weights) if non_negative else torch.randn(n_weights)
+        return torch.nn.Parameter(weight_tensor, requires_grad=True)
+
+    def _upscale_to_64(self, x):
+        return F.interpolate(x.unsqueeze(1), size=(64, 64), mode='bicubic').squeeze(1)
