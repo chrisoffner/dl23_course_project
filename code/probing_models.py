@@ -1,41 +1,5 @@
 import torch
-
-
-class DumbExperimentProbe(torch.nn.Module):
-    def __init__(self, resolution: int, n_timesteps: int):
-        super(DumbExperimentProbe, self).__init__()
-
-        self.res = resolution
-        self.n_timesteps = n_timesteps
-        self.sigmoid = torch.nn.Sigmoid()
-
-        self.timestep_weights = torch.nn.Parameter(
-            torch.randn(n_timesteps), requires_grad=True
-        )
-
-    def forward(self, x: torch.Tensor, gt: torch.Tensor):
-        # Shape: (time steps, n_pixels, resolution, resolution)
-        assert x.shape == (self.n_timesteps, self.res**2, self.res, self.res)
-        assert gt.shape == (self.res, self.res)
-
-        # Multiply each time step with its corresponding scalar
-        x = x * self.sigmoid(
-            self.timestep_weights.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-        )
-
-        # Sum across time steps
-        x = x.sum(dim=0)
-
-        # Select only self-attention maps / channels that correspond to
-        # salient object pixels in the ground truth
-        object_mask = (gt > 0.5).flatten()
-
-        x = x[object_mask, ...]
-
-        # Sum across channels/pixels
-        x = x.sum(dim=0)
-
-        return x
+from typing import List
 
 
 class LinearProbe(torch.nn.Module):
@@ -135,3 +99,90 @@ class LinearProbe(torch.nn.Module):
         return torch.nn.functional.interpolate(
             x[None, None, :, :], size=(64, 64), mode="bicubic"
         ).squeeze()
+
+
+class LinearProbe2(torch.nn.Module):
+    """
+    With batches.
+
+    """
+
+    def __init__(
+        self,
+        n_timesteps: int = 10,
+        n_channels: int = 77,
+        resolutions: List[int] = [8, 16, 32, 64],
+    ):
+        super().__init__()
+        self.n_timesteps = n_timesteps
+        self.n_channels = n_channels
+        self.resolutions = resolutions
+        self.n_resolutions = len(self.resolutions)
+
+
+        self.ts_weights = self._init_weights(self.n_timesteps)
+        self.ch_weights = self._init_weights(self.n_channels)
+        self.res_weights = self._init_weights(self.n_resolutions)
+        self.scale_weights = self._init_weights(1)
+
+    def scheme_tcr(self, cross_attn_maps):
+        # order of collapsing dimensions: timestep, channel, resolution
+        
+        x = cross_attn_maps # (b,4,10,77,64,64)
+
+        x = x * self.ts_weights[None, None, :, None, None, None]
+        x = x.sum(dim=2)  # sum across timesteps --> (b,4,77,64,64)
+
+        x = x * self.ch_weights[None, None, :, None, None]
+        x = x.sum(dim=2)  # sum across channels --> (b,4,64,64)
+
+        x = x * self.res_weights[None, :, None, None]
+        x = x.sum(dim=1) # sum across resolutions --> (b,64,64)
+        
+        # res = x.shape[-1]
+        # x = x.reshape(-1,res*res)
+        # x = x * self.scale_weights[None,:]
+        # x = x.reshape(-1,res,res)
+
+        return x
+
+    def forward(self, cross_attn_maps):
+        
+        ca8,ca16,ca32,ca64 = cross_attn_maps
+        assert ca8.ndim==ca16.ndim==ca32.ndim==ca64.ndim
+        if ca8.ndim ==4:
+            # happens if batch size is 1, otherwise ndim is 5
+            ca8 = ca8.unsqueeze(0)
+            ca16 = ca16.unsqueeze(0)
+            ca32 = ca32.unsqueeze(0)
+            ca64 = ca64.unsqueeze(0)
+
+        ca8 = self.upsample(ca8)   # (b,10,77,64,64)    
+        ca16 = self.upsample(ca16) # (b,10,77,64,64)
+        ca32 = self.upsample(ca32) # (b,10,77,64,64)
+        cross_attn_maps = (ca8,ca16,ca32,ca64)
+
+        maps = torch.stack(cross_attn_maps, dim=1) # --> (b,4,10,77,64,64)
+
+        result = self.scheme_tcr(cross_attn_maps=maps)
+        return result.sigmoid() 
+
+    def _init_weights(self, n_weights):
+        weight_tensor = torch.randn(n_weights)
+        return torch.nn.Parameter(weight_tensor, requires_grad=True)
+
+
+    def upsample(self, x, size=64):
+        # x: 3D, *4D*, 5D tensor --> dims:  mini-batch x channels x [optional depth] x [optional height] x width.
+        # https://pytorch.org/docs/stable/generated/torch.nn.functional.interpolate.html
+        
+        
+        assert x.ndim == 5, f"Input must be 5D tensor (batch, ts, ch, res, res), got {x.shape}" # (b,10,77,res,res)
+        assert x.shape[1]==self.n_timesteps
+        assert x.shape[2]==self.n_channels
+        assert x.shape[3]==x.shape[4], "Input must be square"
+
+        x = x.reshape(-1, self.n_timesteps * self.n_channels, x.shape[-2], x.shape[-1]) # (b,770, res,res)
+        x = torch.nn.functional.interpolate(x, size=(size,size), mode="bicubic") 
+        x = x.reshape(-1, self.n_timesteps, self.n_channels, size, size) # (b,10,77,64,64)
+        return x
