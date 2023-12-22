@@ -145,6 +145,29 @@ class LinearProbe2(torch.nn.Module):
         # x = x.reshape(-1,res,res)
 
         return x
+    
+    def scheme_trc(self, cross_attn_maps):
+        # order of collapsing dimensions: timestep, resolution, channel
+        
+        x = cross_attn_maps # (b,4,10,77,64,64)
+
+        x = x * self.ts_weights[None, None, :, None, None, None]
+        x = x.sum(dim=2)  # sum across timesteps --> (b,4,77,64,64)
+
+        x = x * self.res_weights[None, :, None, None,None]
+        x = x.sum(dim=1) # sum across resolutions --> (b,77,64,64)
+
+        x = x * self.ch_weights[None, :, None, None]
+        x = x.sum(dim=1)  # sum across channels --> (b,64,64)
+
+
+        # res = x.shape[-1]
+        # x = x.reshape(-1,res*res)
+        # x = x * self.scale_weights[None,:]
+        # x = x.reshape(-1,res,res)
+
+        return x
+
 
     def forward(self, cross_attn_maps):
         
@@ -164,7 +187,8 @@ class LinearProbe2(torch.nn.Module):
 
         maps = torch.stack(cross_attn_maps, dim=1) # --> (b,4,10,77,64,64)
 
-        result = self.scheme_tcr(cross_attn_maps=maps)
+        #result = self.scheme_tcr(cross_attn_maps=maps)
+        result = self.scheme_trc(cross_attn_maps=maps)
         return result.sigmoid() 
 
     def _init_weights(self, n_weights):
