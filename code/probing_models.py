@@ -49,7 +49,7 @@ class LinearProbe(torch.nn.Module):
             self,
             n_timesteps: int = 10,
             n_channels: int = 77,
-            res_combinations: torch.Tensor =torch.tensor([1, 1, 1, 1]),
+            res_combinations: torch.Tensor = torch.tensor([1, 1, 1, 1]),
             resolutions: List[int] = [8, 16, 32, 64]):
         super().__init__()
         self.n_timesteps      = n_timesteps
@@ -58,9 +58,9 @@ class LinearProbe(torch.nn.Module):
         self.resolutions      = resolutions
 
         resolutions = [8, 16, 32, 64]
-        self.ts_weights = torch.nn.ParameterDict({f'{res}': self._init_weights(n_timesteps, True) for res in resolutions})
-        self.ch_weights = torch.nn.ParameterDict({f'{res}': self._init_weights(n_channels) for res in resolutions})
-        self.res_weights = self._init_weights(4, True)
+        self.ts_weights  = torch.nn.ParameterDict({f'{res}': self._init_weights(n_timesteps) for res in resolutions})
+        self.ch_weights  = torch.nn.ParameterDict({f'{res}': self._init_weights(n_channels) for res in resolutions})
+        self.res_weights = torch.nn.Parameter(self._init_weights(len(resolutions)))
 
     def forward(self, *cross_attn_maps):
         batch_size = cross_attn_maps[0].size(0)
@@ -86,8 +86,8 @@ class LinearProbe(torch.nn.Module):
 
         return result.sigmoid()
 
-    def _init_weights(self, n_weights, non_negative=False):
-        weight_tensor = torch.rand(n_weights) if non_negative else torch.randn(n_weights)
+    def _init_weights(self, n_weights):
+        weight_tensor = torch.randn(n_weights) * 0.3
         return torch.nn.Parameter(weight_tensor, requires_grad=True)
 
     def _upscale_to_64(self, x):

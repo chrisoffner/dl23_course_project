@@ -1,5 +1,4 @@
 from typing import Dict, List, Tuple
-from pathlib import Path
 
 import torch
 
@@ -46,6 +45,6 @@ class CrossAttentionDataset(torch.utils.data.Dataset):
     def __getitem__(
             self,
             idx: int
-        ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        return self.cross_attn_8[idx],  self.cross_attn_16[idx], \
-               self.cross_attn_32[idx], self.cross_attn_64[idx], self.gt[idx]
+        ) -> Tuple[Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor], torch.Tensor]:
+        return (self.cross_attn_8[idx],  self.cross_attn_16[idx], \
+               self.cross_attn_32[idx], self.cross_attn_64[idx]), self.gt[idx]
