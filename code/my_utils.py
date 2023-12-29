@@ -1,5 +1,6 @@
 from typing import Dict
 import json
+from pathlib import Path
 
 import torch
 import numpy as np
@@ -32,7 +33,7 @@ def dict_from_disk(file_path: str) -> Dict[int, Dict[int, torch.Tensor]]:
         for timestep in file.keys():
             attn_dict[int(timestep)] = {}
             for res in file[timestep].keys():
-                attn_dict[int(timestep)][int(res)] = file[timestep][res][:]
+                attn_dict[int(timestep)][int(res)] = torch.from_numpy(file[timestep][res][:])
 
     return attn_dict
 
@@ -42,12 +43,18 @@ class DPLoss(torch.nn.Module):
         return (x - gt).norm()
 
 
-def load_image_as_tensor(image_path: str) -> torch.Tensor:
-    with Image.open(image_path) as img:
-        img = img.convert('RGB')
-        tensor = transforms.ToTensor()(img)
+def load_image_as_tensor(
+        image_path: Path,
+        gt_segmentation: bool = False
+    ) -> torch.Tensor:
+    transform = transforms.Compose([
+        transforms.Resize((64, 64)),
+        transforms.ToTensor(),
+    ]) if gt_segmentation else transforms.ToTensor()
 
-        return tensor
+    with Image.open(image_path) as img:
+        img = img.convert("L" if gt_segmentation else "RGB")
+        return transform(img).squeeze()
 
 
 def resize_image_tensor(

@@ -133,6 +133,8 @@ def plot_attention_location(
         # Set subplot titles
         axs[0, i].set_title(f'A[{ch}, :, :] ({res} x {res})')
         axs[1, i].set_title(f'B[:, :, {ch}] ({res} x {res})')
+        axs[0, i].axis('off')
+        axs[1, i].axis('off')
 
         # Add the artist objects created by imshow and scatter to the list
         artists.append(axs[0, i].imshow(zoom(A[ch, :, :], zoom_factor, order=2) if interpolate else A[ch, :, :]))
@@ -240,7 +242,7 @@ def plot_masks_grid(masks_tensor: torch.Tensor):
 
     for idx, ax in enumerate(axes):
         if idx < masks_tensor.shape[0]:
-            ax.imshow(masks_tensor[idx], cmap='gray')
+            ax.imshow(masks_tensor[idx])
             ax.axis('off')
             ax.set_title(f'Index: {idx}')
         else:
