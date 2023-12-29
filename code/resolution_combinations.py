@@ -59,21 +59,22 @@ res_combinations = torch.tensor(
 
 # TRAIN PROBE
 N_EPOCHS = 60  # Number of epochs
+N_RUNS = 3  # Number of runs per resolution combination
 
 results_dict = {
     ",".join(str(num) for num in res_combination.tolist()): []
     for res_combination in res_combinations
 }
 
-for res_combination in tqdm(res_combinations):
-    for i in tqdm(range(3)):
+for res_combination in tqdm(res_combinations, desc="Resolution combinations"):
+    for i in range(N_RUNS):
         # CREATE PROBE
         model = LinearProbe(res_combinations=res_combination)
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
         criterion = torch.nn.BCELoss()
 
         epoch_losses = []
-        for epoch in range(N_EPOCHS):
+        for epoch in tqdm(range(N_EPOCHS), desc=f"Run {i}/{N_RUNS} Epochs"):
             epoch_loss = 0
 
             for cross_attn_maps, gt in data_loader:
@@ -89,10 +90,10 @@ for res_combination in tqdm(res_combinations):
                 loss.backward()
                 optimizer.step()
 
-            epoch_losses.append(epoch_loss)
+            epoch_losses.append(epoch_loss / len(data_loader))
 
         combination_str = ",".join(str(num) for num in res_combination.tolist())
-        results_dict[combination_str].append(epoch_losses / len(data_loader))
+        results_dict[combination_str].append(epoch_losses)
 
 
 # Write results to disk
