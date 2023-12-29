@@ -19,7 +19,7 @@ N_EPOCHS = 100  # Number of epochs
 N_MODELS = 20   # Number of training subsets
 N_SAMPLES_PER_MODEL = 200  # Number of samples per training subset
 VAL_SIZE = 50  # Size of validation set
-DATASET = "large"  # "allsizes", "small", "medium", "large"
+DATASET = "all_sizes"  # "all_sizes", "small", "medium", "large"
 
 
 # ======================== PREPARATION OF TRAINING DATA ========================
