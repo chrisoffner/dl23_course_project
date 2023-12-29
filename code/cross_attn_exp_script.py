@@ -54,8 +54,8 @@ res_combinations = torch.tensor(
         [1, 0, 1, 1],
         [0, 1, 1, 1],
         [1, 1, 1, 1],  # all four resolutions
-    ]
-)  #  8 16 32 64
+    ]  # 8 16 32 64
+)  
 
 # TRAIN PROBE
 N_EPOCHS = 60  # Number of epochs
