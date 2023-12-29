@@ -35,7 +35,7 @@ class StableDiffusionBase:
       self,
       img_height=512,
       img_width=512,
-      jit_compile=False,
+      jit_compile=False
   ):
     # UNet requires multiples of 2**7 = 128
     img_height = round(img_height / 128) * 128
@@ -339,8 +339,10 @@ class StableDiffusion(StableDiffusionBase):
       img_height=512,
       img_width=512,
       jit_compile=False,
+      use_pretrained_weights=True
   ):
     super().__init__(img_height, img_width, jit_compile)
+    self.use_pretrained_weights = use_pretrained_weights
     print(
         "By using this model checkpoint, you acknowledge that its usage is "
         "subject to the terms of the CreativeML Open RAIL-M license at "
@@ -368,7 +370,9 @@ class StableDiffusion(StableDiffusionBase):
     """
     if self._diffusion_model is None:
       self._diffusion_model = DiffusionModel(
-          self.img_height, self.img_width, MAX_PROMPT_LENGTH
+          self.img_height,
+          self.img_width, MAX_PROMPT_LENGTH,
+          download_weights=self.use_pretrained_weights
       )
       if self.jit_compile:
         self._diffusion_model.compile(jit_compile=True)

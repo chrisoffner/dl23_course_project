@@ -2,8 +2,9 @@ from time import time
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, random_split, Subset
 from tqdm import tqdm
+import random
 
 from my_utils import dict_from_disk, load_image_as_tensor
 from cross_attention_dataset import CrossAttentionDataset
@@ -15,9 +16,10 @@ start_time = time()
 
 
 N_EPOCHS = 100  # Number of epochs
-N_SUBSETS = 10  # Number of training subsets
+N_MODELS = 20   # Number of training subsets
+N_SAMPLES_PER_MODEL = 200  # Number of samples per training subset
 VAL_SIZE = 50  # Size of validation set
-DATASET = "small"  # "allsizes", "small", "medium", "large"
+DATASET = "large"  # "allsizes", "small", "medium", "large"
 
 
 # ======================== PREPARATION OF TRAINING DATA ========================
@@ -25,9 +27,9 @@ DATASET = "small"  # "allsizes", "small", "medium", "large"
 
 # Path to the directory containing cross-attention maps and ground truth masks
 FEATURE_DIR = Path(
-    "/Users/chrisoffner3d/Downloads/custom_datasets/small/cross_attn_maps"
+    f"/Users/chrisoffner3d/Downloads/custom_datasets/{DATASET}/cross_attn_maps"
 )
-GT_DIR = Path("../data/custom_datasets/small/gt")
+GT_DIR = Path(f"../data/custom_datasets/{DATASET}/gt")
 
 # Filter files in directory for the cross-attention maps
 cross_attn_filenames = sorted(
@@ -54,29 +56,25 @@ assert len(dataset) > VAL_SIZE, "Validation set size is larger than dataset size
 train_size = len(dataset) - VAL_SIZE
 train_dataset, val_dataset = random_split(dataset, [train_size, VAL_SIZE])
 
-# Further split training dataset into five subsets
-subset_size = train_size // N_SUBSETS
-subset_sizes = [subset_size] * N_SUBSETS
-
-# Handle the case where the dataset size is not evenly divisible
-remainder = train_size - subset_size * N_SUBSETS
-for i in range(remainder):
-    subset_sizes[i] += 1
-
-# Create disjoint training subsets
-training_subsets = random_split(train_dataset, subset_sizes)
-
-# Create data loaders
 val_loader = DataLoader(val_dataset, shuffle=False)
-train_loaders = [DataLoader(subset, shuffle=True) for subset in training_subsets]
+
+
+# Create training subsets and their corresponding DataLoaders
+train_loaders = [
+    DataLoader(
+        Subset(dataset, random.choices(range(len(dataset)), k=N_SAMPLES_PER_MODEL)),
+        shuffle=True,
+    )
+    for _ in range(N_MODELS)
+]
 
 
 # ========================== INITIALISATION OF RECORDS =========================
 
 
-train_losses = torch.empty(N_SUBSETS, N_EPOCHS)
-val_losses = torch.empty(N_SUBSETS, N_EPOCHS)
-trained_models = [None] * N_SUBSETS
+train_losses = torch.empty(N_MODELS, N_EPOCHS)
+val_losses = torch.empty(N_MODELS, N_EPOCHS)
+trained_models = [None] * N_MODELS
 
 
 # ================================== TRAINING ==================================
@@ -88,7 +86,7 @@ for subset_idx, train_loader in enumerate(train_loaders):
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
     criterion = torch.nn.BCELoss()
 
-    for epoch in tqdm(range(N_EPOCHS), desc=f"Model {subset_idx+1}/{N_SUBSETS}"):
+    for epoch in tqdm(range(N_EPOCHS), desc=f"Model {subset_idx+1}/{N_MODELS}"):
         # Training phase
         model.train()
         train_loss = 0
@@ -121,16 +119,23 @@ for subset_idx, train_loader in enumerate(train_loaders):
     # Record the trained model
     trained_models[subset_idx] = model
 
+    # =========================== WRITING RECORDS TO DISK ==========================
 
-# =========================== WRITING RECORDS TO DISK ==========================
 
+PROJECT_DIR = Path.cwd().parent
+RESULTS_DIR = (
+    PROJECT_DIR
+    / "exp_results"
+    / f"subset_training_{DATASET}"
+    / f"{N_MODELS}_models_{N_EPOCHS}_epochs_{N_SAMPLES_PER_MODEL}_samples"
+)
 
-PROJECT_DIR   = Path.cwd().parent
-RESULTS_DIR   = PROJECT_DIR / "exp_results" / f"subset_training_{DATASET}"
+# Create the results directory if it does not exist
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Save the losses
-torch.save(train_losses, RESULTS_DIR / f"train_losses_{N_EPOCHS}_epochs.pt")
-torch.save(val_losses, RESULTS_DIR / f"val_losses_{N_EPOCHS}_epochs.pt")
+torch.save(train_losses, RESULTS_DIR / f"train_losses.pt")
+torch.save(val_losses, RESULTS_DIR / f"val_losses.pt")
 
 # Save the models
 for idx, model in enumerate(trained_models):

@@ -18,6 +18,9 @@ Usage:
 """
 
 DEVICE = "cpu"
+# print(f"GPUs available: ", tf.config.experimental.list_physical_devices('GPU'))
+# DEVICE = tf.test.gpu_device_name()
+# print(f"Using device: {DEVICE}")
 
 # Path of the context vector file
 CONTEXT_PATH = "../data/context.h5"
@@ -33,10 +36,10 @@ with tf.device(DEVICE):
         image_encoder.input,
         image_encoder.layers[-1].output,
     )
-    model = StableDiffusion(img_width=512, img_height=512)
+    model = StableDiffusion(img_width=512, img_height=512, use_pretrained_weights=True)
 
 
-for object_size in ['small', 'medium', 'large']:
+for object_size in ["small", "medium", "large"]:
     print(f"\n=== Extracting features for {object_size} objects ===")
 
     # This is where the RGB images are located
