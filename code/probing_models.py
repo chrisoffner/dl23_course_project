@@ -100,8 +100,8 @@ class LinearProbe(torch.nn.Module):
             x[None, None, :, :], size=(64, 64), mode="bicubic"
         ).squeeze()
 
-
 class LinearProbe2(torch.nn.Module):
+
     """
     With batches.
 
@@ -168,12 +168,11 @@ class LinearProbe2(torch.nn.Module):
 
         return x
 
-
     def forward(self, cross_attn_maps):
         
         ca8,ca16,ca32,ca64 = cross_attn_maps
         assert ca8.ndim==ca16.ndim==ca32.ndim==ca64.ndim
-        if ca8.ndim ==4:
+        if ca8.ndim == 4:
             # happens if batch size is 1, otherwise ndim is 5
             ca8 = ca8.unsqueeze(0)
             ca16 = ca16.unsqueeze(0)
@@ -210,3 +209,160 @@ class LinearProbe2(torch.nn.Module):
         x = torch.nn.functional.interpolate(x, size=(size,size), mode="bicubic") 
         x = x.reshape(-1, self.n_timesteps, self.n_channels, size, size) # (b,10,77,64,64)
         return x
+
+class LinearProbe3(torch.nn.Module):
+    def __init__(self):
+        
+        super().__init__()
+
+        """
+        With batches.
+    
+        n_timesteps: 10,
+        n_channels:  77,
+        resolutions: [8, 16, 32, 64]
+        """
+
+        # initialize weights
+        self.ts_weights = self._init_weights(10)
+        self.ch_weights = self._init_weights(77)
+        self.res_weights = self._init_weights(4)
+
+    def forward(
+        self,
+        cross_attn_maps: List[torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Four tensors of shape (batch_size, 10, 77, res, res)
+        """
+        cross_attn_8, cross_attn_16, cross_attn_32, cross_attn_64 = cross_attn_maps
+
+        if cross_attn_8.ndim == 3:
+            # happens if batch size is 1, otherwise ndim is 5
+            croaa_attn_8 = croaa_attn_8.unsqueeze(0)
+            croaa_attn_16 = croaa_attn_16.unsqueeze(0)
+            croaa_attn_32 = croaa_attn_32.unsqueeze(0)
+            croaa_attn_64 = croaa_attn_64.unsqueeze(0)        
+
+        batch_size = cross_attn_8.shape[0]
+
+        # collapse timestep dimension
+        wt = self.ts_weights[None,:, None, None, None]
+        x_8 = cross_attn_8 * wt
+        x_16 = cross_attn_16 * wt
+        x_32 = cross_attn_32 * wt
+        x_64 = cross_attn_64 * wt
+        x_8 = x_8.sum(dim=1)
+        x_16 = x_16.sum(dim=1)
+        x_32 = x_32.sum(dim=1)
+        x_64 = x_64.sum(dim=1)
+
+        # collapse channel dimension
+        wc = self.ch_weights[None,:, None, None]
+        x_8 = x_8 * wc
+        x_16 = x_16 * wc
+        x_32 = x_32 * wc
+        x_64 = x_64 * wc
+        x_8 = x_8.sum(dim=1)
+        x_16 = x_16.sum(dim=1)
+        x_32 = x_32.sum(dim=1)
+        x_64 = x_64.sum(dim=1)
+
+        # Upsample to (64, 64) resolution 
+        x_8 = self.upsample(x_8)
+        x_16 = self.upsample(x_16)
+        x_32 = self.upsample(x_32)
+
+        # collapse resolution dimension
+        wr = self.res_weights
+        x_8 = x_8 * wr[None,0]
+        x_16 = x_16 * wr[None,1]
+        x_32 = x_32 * wr[None,2]
+        x_64 = x_64 * wr[None,3]
+        result = x_8 + x_16 + x_32 + x_64
+
+        assert result.shape == (batch_size, 64, 64)
+
+        return result.sigmoid()
+
+    def _init_weights(self, n_weights: int) -> torch.nn.Parameter:
+        return torch.nn.Parameter(torch.randn(n_weights), requires_grad=True)
+
+    def upsample(self, x, size=64):
+        return torch.nn.functional.interpolate(x[None, :, :], size=(64, 64), mode="bicubic").squeeze()
+
+
+class LinearProbe4(torch.nn.Module):
+    def __init__(self):
+        
+        super().__init__()
+
+        """
+        Averages the token-channels to iron out the effect of the channel weights.
+    
+        n_timesteps: 10,
+        n_channels:  77,
+        resolutions: [8, 16, 32, 64]
+        """
+
+        # initialize weights
+        self.ts_weights = self._init_weights(10)
+        self.res_weights = self._init_weights(4)
+
+    def forward(
+        self,
+        cross_attn_maps: List[torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Four tensors of shape (batch_size, 10, 77, res, res)
+        """
+        cross_attn_8, cross_attn_16, cross_attn_32, cross_attn_64 = cross_attn_maps
+
+        if cross_attn_8.ndim == 3:
+            # happens if batch size is 1, otherwise ndim is 5
+            croaa_attn_8 = croaa_attn_8.unsqueeze(0)
+            croaa_attn_16 = croaa_attn_16.unsqueeze(0)
+            croaa_attn_32 = croaa_attn_32.unsqueeze(0)
+            croaa_attn_64 = croaa_attn_64.unsqueeze(0)        
+
+        batch_size = cross_attn_8.shape[0]
+
+        # collapse timestep dimension
+        wt = self.ts_weights[None,:, None, None, None]
+        x_8 = cross_attn_8 * wt
+        x_16 = cross_attn_16 * wt
+        x_32 = cross_attn_32 * wt
+        x_64 = cross_attn_64 * wt
+        x_8 = x_8.sum(dim=1)
+        x_16 = x_16.sum(dim=1)
+        x_32 = x_32.sum(dim=1)
+        x_64 = x_64.sum(dim=1)
+
+        # collapse channel dimension
+        x_8 = x_8.mean(dim=1)
+        x_16 = x_16.mean(dim=1)
+        x_32 = x_32.mean(dim=1)
+        x_64 = x_64.mean(dim=1)
+
+        # Upsample to (64, 64) resolution 
+        x_8 = self.upsample(x_8)
+        x_16 = self.upsample(x_16)
+        x_32 = self.upsample(x_32)
+
+        # collapse resolution dimension
+        wr = self.res_weights
+        x_8 = x_8 * wr[None,0]
+        x_16 = x_16 * wr[None,1]
+        x_32 = x_32 * wr[None,2]
+        x_64 = x_64 * wr[None,3]
+        result = x_8 + x_16 + x_32 + x_64
+
+        assert result.shape == (batch_size, 64, 64)
+
+        return result.sigmoid()
+
+    def _init_weights(self, n_weights: int) -> torch.nn.Parameter:
+        return torch.nn.Parameter(torch.randn(n_weights), requires_grad=True)
+
+    def upsample(self, x, size=64):
+        return torch.nn.functional.interpolate(x[None, :, :], size=(64, 64), mode="bicubic").squeeze()
