@@ -270,8 +270,10 @@ def plot_image_and_mask(image_path, mask_path):
 
     plt.show()
 
-def count_white_pixels(mask_path):
+def count_white_pixels(mask_path, relative = True):
     mask = Image.open(mask_path)
     mask_array = np.array(mask)
     white_pixel_count = np.sum(mask_array == 255)
+    if relative:
+        white_pixel_count = white_pixel_count / (mask_array.shape[0] * mask_array.shape[1])
     return white_pixel_count

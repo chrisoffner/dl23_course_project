@@ -17,11 +17,12 @@ Usage:
 - set `FEATURE_DIR` to where the extracted features should be saved
 """
 
-# This is where the RGB images are located
-IMG_DIR = "../data/ECSSD_resized/img"
+SET_DIR = r"C:\Users\aapolina\CODE\diffusion_segmentation\DATA\iou_test\small"
+
+IMG_DIR = os.path.join(SET_DIR, "img")
 
 # This is where the extracted features will be saved
-FEATURE_DIR = "/Users/chrisoffner3d/Downloads/ECSSD_resized/features"
+FEATURE_DIR = os.path.join(SET_DIR, "cross_attn")
 
 # This is where the context vector is located
 CONTEXT_PATH = "../data/context.h5"
@@ -99,12 +100,12 @@ def main():
 
                 # Average over attention heads and store attention maps for
                 # current time step in dictionary with half-precision (float16)
-                self_attn_dict[timestep] = {
-                    8:  torch.from_numpy(self_attn_8.mean(axis=(0,1))).half(),
-                    16: torch.from_numpy(self_attn_16.mean(axis=(0,1))).half(),
-                    32: torch.from_numpy(self_attn_32.mean(axis=(0,1))).half(),
-                    64: torch.from_numpy(self_attn_64.mean(axis=(0,1))).half()
-                }
+                # self_attn_dict[timestep] = {
+                #     8:  torch.from_numpy(self_attn_8.mean(axis=(0,1))).half(),
+                #     16: torch.from_numpy(self_attn_16.mean(axis=(0,1))).half(),
+                #     32: torch.from_numpy(self_attn_32.mean(axis=(0,1))).half(),
+                #     64: torch.from_numpy(self_attn_64.mean(axis=(0,1))).half()
+                # }
 
                 cross_attn_dict[timestep] = {
                     8:  torch.from_numpy(cross_attn_8.mean(axis=(0,1))).half(),
@@ -114,7 +115,7 @@ def main():
                 }
 
         # Save dictionaries to disk
-        dict_to_disk(attn_dict=self_attn_dict,  file_path=self_attn_path)
+        #dict_to_disk(attn_dict=self_attn_dict,  file_path=self_attn_path)
         dict_to_disk(attn_dict=cross_attn_dict, file_path=cross_attn_path)
 
     print("\n=== Feature extraction complete ===")
